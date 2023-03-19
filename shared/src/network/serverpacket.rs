@@ -1,11 +1,10 @@
 use std::io::{Read, Write};
 
+use crate::crypto::Xor;
 use bytes::Buf;
 use crypto::blowfish::Blowfish;
 use crypto::symmetriccipher::BlockEncryptor;
 use num::ToPrimitive;
-
-use crate::Xor;
 
 pub struct ServerPacket {
     buffer: Vec<u8>,

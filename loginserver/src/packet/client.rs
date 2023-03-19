@@ -1,9 +1,9 @@
 pub mod login;
 
-use crate::network::serverpacket::swap32;
 use crypto::blowfish::Blowfish;
 use crypto::symmetriccipher::BlockDecryptor;
 use num::ToPrimitive;
+use shared::network::serverpacket::swap32;
 use std::io;
 use std::io::ErrorKind::ConnectionAborted;
 use std::io::Read;

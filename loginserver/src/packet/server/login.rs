@@ -1,9 +1,9 @@
-use crate::crypto::Scramble;
-use crate::network::serverpacket::ServerPacket;
 use crate::packet::server::ServerPacketOutput;
-use crate::structs::Server;
-use crate::Session;
 use crypto::blowfish::Blowfish;
+use shared::crypto::Scramble;
+use shared::network::serverpacket::ServerPacket;
+use shared::structs::server::Server;
+use shared::structs::session::Session;
 
 pub struct InitPacket {
     pub session_id: u32,

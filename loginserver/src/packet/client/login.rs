@@ -1,9 +1,9 @@
 use rand::thread_rng;
 use rsa::internals::decrypt;
 use rsa::BigUint;
+use shared::structs::session::Session;
 
 use crate::packet::client::FromDecryptedPacket;
-use crate::Session;
 
 #[derive(Debug)]
 pub struct RequestAuthLoginPacket {

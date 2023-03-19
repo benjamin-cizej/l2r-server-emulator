@@ -1,4 +1,6 @@
 [workspace]
 members = [
-    "loginserver"
+    "loginserver",
+    "gameserver",
+    "shared"
 ]
