@@ -1,23 +1,29 @@
 extern crate core;
 
+use crate::network::serverpacket::ServerPacket;
+use crate::packet::client::login::RequestAuthLoginPacket;
+use crate::packet::client::{decrypt_client_packet, FromDecryptedPacket, LoginClientPacketEnum};
+use crate::packet::server::login::{InitPacket, LoginOkPacket, PlayOkPacket, ServerListPacket};
+use crate::packet::server::{send_packet, ServerPacketOutput};
+use crate::packet::{client, server};
+use crate::structs::Server;
+use crypto::blowfish::Blowfish;
+use num::ToPrimitive;
+use rand::{thread_rng, Rng};
+use rsa::{BigUint, PublicKeyParts, RsaPrivateKey};
+use std::io::ErrorKind;
+use std::net::Ipv4Addr;
 use std::{
     io::{Read, Write},
     net::{TcpListener, TcpStream},
     thread, time,
 };
 
-use ucs2;
+mod network;
+mod packet;
+mod structs;
 
-use bytes::Buf;
-use crypto::{
-    blowfish::Blowfish,
-    symmetriccipher::{BlockDecryptor, BlockEncryptor},
-};
-use num::ToPrimitive;
-//use rand::Rng;
-use rsa::{BigUint, PublicKeyParts, RsaPrivateKey};
-
-struct Xor {
+pub struct Xor {
     enabled: bool,
     secret1: [u8; 16],
     secret2: [u8; 16],
@@ -86,127 +92,23 @@ impl Xor {
     }
 }
 
-struct Session {
-    blowfish: Blowfish,
+pub struct Session {
+    session_id: u32,
+    blowfish_key: [u8; 16],
     rsa_key: RsaPrivateKey,
 }
 
 impl Session {
     fn new() -> Session {
+        let mut blowfish_key = [0u8; 16];
+        thread_rng().fill(&mut blowfish_key[..]);
+
         Session {
-            blowfish: Blowfish::new(&[
-                0x6bu8, 0x60u8, 0xcbu8, 0x5bu8, 0x82u8, 0xceu8, 0x90u8, 0xb1u8, 0xccu8, 0x2bu8,
-                0x6cu8, 0x55u8, 0x6cu8, 0x6cu8, 0x6cu8, 0x6cu8,
-            ]),
-            rsa_key: RsaPrivateKey::new_with_exp(
-                &mut rand::thread_rng(),
-                1024,
-                &BigUint::from(65537u32),
-            )
-            .unwrap(),
+            session_id: thread_rng().gen_range(0..0x8000000),
+            blowfish_key,
+            rsa_key: RsaPrivateKey::new_with_exp(&mut thread_rng(), 1024, &BigUint::from(65537u32))
+                .unwrap(),
         }
-    }
-}
-
-struct ServerPacket {
-    buffer: Vec<u8>,
-}
-
-impl ServerPacket {
-    fn new() -> ServerPacket {
-        ServerPacket { buffer: vec![] }
-    }
-
-    fn write_uint8(&mut self, number: u8) {
-        self.buffer.append(&mut Vec::from(number.to_le_bytes()));
-    }
-
-    fn write_uint16(&mut self, number: u16) {
-        self.buffer.append(&mut Vec::from(number.to_le_bytes()));
-    }
-
-    fn write_int32(&mut self, number: i32) {
-        self.buffer.append(&mut Vec::from(number.to_le_bytes()));
-    }
-
-    fn write_int64(&mut self, number: i64) {
-        self.buffer.append(&mut Vec::from(number.to_le_bytes()));
-    }
-
-    fn write_double(&mut self, number: f64) {
-        self.buffer.append(&mut Vec::from(number.to_le_bytes()));
-    }
-
-    fn write_bytes(&mut self, mut bytes: Vec<u8>) {
-        self.buffer.append(&mut bytes);
-    }
-
-    fn write_text(&mut self, text: &str) {
-        let mut buffer = vec![0u16; text.len()];
-        let ucs2 = buffer.as_mut_slice();
-        ucs2::encode(text, ucs2).unwrap();
-
-        let mut buffer = vec![0u8; ucs2.len() * 2];
-        ucs2.iter()
-            .zip(buffer.chunks_exact_mut(2))
-            .for_each(|(a, b)| b.copy_from_slice(&a.to_le_bytes()));
-        buffer.append(&mut vec![0u8; 2]);
-
-        self.buffer.append(&mut buffer);
-    }
-
-    fn len(&self) -> usize {
-        self.buffer.len()
-    }
-
-    fn auth_encypher(&mut self) {
-        let mut ecx: u64 = 0;
-        let bytes = bytes::Bytes::from_iter(self.buffer.clone());
-        let buffer_len = bytes.len();
-        let mut reader = bytes.reader();
-        let mut new_buffer: Vec<u8> = vec![];
-
-        for _i in (0..buffer_len).step_by(4) {
-            let mut edx = [0u8; 4];
-            match reader.read(&mut edx) {
-                Ok(_size) => {
-                    ecx = ecx + u32::from_le_bytes(edx) as u64;
-                    let edx_int: u32 = u32::from_le_bytes(edx) ^ ecx as u32;
-                    new_buffer.write(&edx_int.to_le_bytes()).unwrap();
-                }
-                Err(_size) => println!("Fail"),
-            }
-        }
-
-        self.buffer = new_buffer;
-    }
-
-    fn blowfish_encrypt(&mut self, blowfish: Blowfish) {
-        let mut encrypted_stream: Vec<u8> = vec![];
-        for i in self.buffer.chunks(8) {
-            let mut enc_buffer = [0u8; 8];
-            let mut input = swap32(i);
-            blowfish.encrypt_block(&mut input, &mut enc_buffer);
-            encrypted_stream.append(&mut Vec::from(swap32(&mut enc_buffer)));
-        }
-
-        self.buffer = encrypted_stream;
-    }
-
-    fn pad_bits(&mut self) {
-        let size = self.buffer.len().to_i32().unwrap();
-        let buffer_size = ((num::integer::div_ceil(size, 4) * 4) - size)
-            .to_usize()
-            .unwrap();
-        let buf: Vec<u8> = vec![0; buffer_size];
-
-        self.buffer = [self.buffer.clone(), buf].concat();
-    }
-
-    fn add_checksum(&mut self) {
-        let size = 4 + (self.len() + 4) % 8;
-        let checksum = vec![0; size];
-        self.write_bytes(checksum);
     }
 }
 
@@ -237,167 +139,128 @@ impl Scramble for RsaPrivateKey {
     }
 }
 
-fn handle_stream(mut stream: TcpStream, session: Session) {
-    stream.set_nodelay(true).unwrap();
-    stream.set_nonblocking(true).unwrap();
-
-    loop {
-        thread::sleep(time::Duration::from_millis(10));
-
-        let mut len = [0u8; 2];
-        match stream.peer_addr() {
-            Ok(_) => {}
-            Err(_) => {
-                break;
+fn main() -> std::io::Result<()> {
+    thread::spawn(|| {
+        let game_server = TcpListener::bind("127.0.0.1:7778").unwrap();
+        for stream in game_server.incoming() {
+            match stream {
+                Ok(stream) => {
+                    println!("Game server connection established");
+                    let mut xor = Xor::new();
+                    thread::spawn(move || handle_game_stream(stream, &mut xor));
+                }
+                Err(_) => {}
             }
         }
-        match stream.read_exact(&mut len) {
-            Ok(_) => {}
-            Err(_) => {
-                continue;
-            }
-        };
-        let mut data = vec![0; u16::from_le_bytes(len).to_usize().unwrap()];
-        stream.read_exact(&mut data).unwrap_err();
+    });
 
-        let mut decrypted_stream: Vec<u8> = vec![];
-        for i in data.chunks(8) {
-            let mut dec_buffer = [0u8; 8];
-            let mut input = swap32(i);
-            session.blowfish.decrypt_block(&mut input, &mut dec_buffer);
-            decrypted_stream.append(&mut Vec::from(swap32(&mut dec_buffer)));
+    let login_server = TcpListener::bind("127.0.0.1:2106")?;
+    for stream in login_server.incoming() {
+        match stream {
+            Ok(stream) => {
+                println!("Login server connection established");
+                stream.set_nodelay(true).unwrap();
+                stream.set_nonblocking(true).unwrap();
+                thread::spawn(move || handle_stream(stream.try_clone().unwrap()));
+            }
+            Err(_) => {}
         }
-
-        match decrypted_stream.get(0).unwrap() {
-            0x07 => {
-                let session_id =
-                    i32::from_le_bytes(decrypted_stream.get(1..5).unwrap().try_into().unwrap());
-                let mut packet = ServerPacket::new();
-                packet.write_uint8(0x0b);
-                packet.write_int32(session_id);
-                packet.write_int32(0);
-                packet.write_int32(0);
-                packet.write_int32(0);
-                packet.write_int32(0);
-                packet.pad_bits();
-                packet.add_checksum();
-                packet.blowfish_encrypt(session.blowfish);
-
-                let mut write = stream.try_clone().unwrap();
-                let length = (packet.len() + 2).to_u16().unwrap().to_le_bytes();
-                let output = [&length, packet.buffer.as_slice()].concat();
-
-                write.write(output.as_slice()).unwrap();
-                write.flush().unwrap();
-            }
-            0x00 => {
-                let mut packet = ServerPacket::new();
-                packet.write_uint8(0x03);
-                packet.write_int32(0);
-                packet.write_int32(0);
-                packet.write_int32(0);
-                packet.write_int32(0);
-                packet.write_int32(0x000003ea);
-                packet.write_int32(0);
-                packet.write_int32(0);
-                packet.write_int32(0);
-                packet.write_bytes(vec![0; 16]);
-                packet.pad_bits();
-                packet.add_checksum();
-                packet.blowfish_encrypt(session.blowfish);
-
-                let mut write = stream.try_clone().unwrap();
-                let length = (packet.len() + 2).to_u16().unwrap().to_le_bytes();
-                let output = [&length, packet.buffer.as_slice()].concat();
-
-                write.write(output.as_slice()).unwrap();
-                write.flush().unwrap();
-            }
-            0x05 => {
-                let mut packet = ServerPacket::new();
-                packet.write_uint8(0x04);
-                packet.write_uint8(1);
-                packet.write_uint8(1);
-                packet.write_uint8(1);
-                packet.write_uint8(127);
-                packet.write_uint8(0);
-                packet.write_uint8(0);
-                packet.write_uint8(1);
-                packet.write_int32(7778);
-                packet.write_uint8(0);
-                packet.write_uint8(1);
-                packet.write_uint16(1);
-                packet.write_uint16(100);
-                packet.write_uint8(1);
-                packet.write_int32(1);
-                packet.write_uint8(0);
-                packet.write_uint16(0);
-                packet.write_uint8(1);
-                packet.write_uint8(1);
-                packet.write_uint8(1);
-                packet.write_uint8(0);
-                packet.pad_bits();
-                packet.add_checksum();
-                packet.blowfish_encrypt(session.blowfish);
-
-                let mut write = stream.try_clone().unwrap();
-                let length = (packet.len() + 2).to_u16().unwrap().to_le_bytes();
-                let output = [&length, packet.buffer.as_slice()].concat();
-
-                write.write(output.as_slice()).unwrap();
-                write.flush().unwrap();
-            }
-            0x02 => {
-                let mut packet = ServerPacket::new();
-                packet.write_uint8(0x07);
-                packet.write_int32(0);
-                packet.write_int32(0);
-                packet.pad_bits();
-                packet.add_checksum();
-                packet.blowfish_encrypt(session.blowfish);
-
-                let mut write = stream.try_clone().unwrap();
-                let length = (packet.len() + 2).to_u16().unwrap().to_le_bytes();
-                let output = [&length, packet.buffer.as_slice()].concat();
-
-                write.write(output.as_slice()).unwrap();
-                write.flush().unwrap();
-            }
-            packet => {
-                println!("Unknown packet received: {:02x?}", packet);
-            }
-        }
-
-        println!("TEST {:02X?}", decrypted_stream);
     }
 
-    println!("Conn end");
+    Ok(())
 }
 
-fn handle_game_stream(mut stream: TcpStream, mut xor: Xor) {
+fn handle_stream(mut stream: TcpStream) {
+    let session = Session::new();
+    let blowfish = Blowfish::new(&session.blowfish_key);
+    send_packet(&mut stream, Box::new(InitPacket::new(&session)));
+
+    'main: loop {
+        thread::sleep(time::Duration::from_millis(10));
+
+        loop {
+            match decrypt_client_packet(&mut stream, &blowfish) {
+                Ok(mut decrypted_packet) => {
+                    if let Some(packet_type) = LoginClientPacketEnum::from_packet(&decrypted_packet)
+                    {
+                        let matched_packet: Box<dyn ServerPacketOutput>;
+                        match packet_type {
+                            LoginClientPacketEnum::RequestAuthLogin => {
+                                RequestAuthLoginPacket::decrypt_credentials(
+                                    &mut decrypted_packet,
+                                    &session,
+                                );
+                                let packet =
+                                    RequestAuthLoginPacket::from_decrypted_packet(decrypted_packet);
+                                println!("Packet: {:?}", packet);
+
+                                matched_packet = Box::new(LoginOkPacket::new(&blowfish));
+                            }
+                            LoginClientPacketEnum::AuthGameGuard => {
+                                let packet =
+                                    client::login::AuthGameGuardPacket::from_decrypted_packet(
+                                        decrypted_packet,
+                                    );
+                                let session_id = packet.get_session_id();
+                                let mut packet = server::login::AuthGameGuardPacket::new(&blowfish);
+                                packet.session_id = session_id;
+                                matched_packet = Box::new(packet);
+                            }
+                            LoginClientPacketEnum::ServerList => {
+                                let mut packet = ServerListPacket::new(&blowfish);
+                                packet.list.push(Server {
+                                    id: 1,
+                                    ip: Ipv4Addr::new(127, 0, 0, 1),
+                                    port: 7778,
+                                    age_limit: false,
+                                    pvp_enabled: true,
+                                    current_players: 0,
+                                    max_players: 100,
+                                    status: true,
+                                    server_type: 1,
+                                    brackets: false,
+                                });
+                                matched_packet = Box::new(packet)
+                            }
+                            LoginClientPacketEnum::RequestServerLogin => {
+                                matched_packet = Box::new(PlayOkPacket::new(&blowfish));
+                            }
+                        }
+
+                        send_packet(&mut stream, matched_packet);
+                    } else {
+                        println!(
+                            "Unknown packet received: {:02x?}",
+                            decrypted_packet.get(0).unwrap()
+                        );
+                    }
+                }
+                Err(e) => match e.kind() {
+                    ErrorKind::ConnectionAborted
+                    | ErrorKind::UnexpectedEof
+                    | ErrorKind::ConnectionReset => {
+                        break 'main;
+                    }
+                    _ => {
+                        break;
+                    }
+                },
+            }
+        }
+    }
+
+    println!("Login server connection terminated");
+}
+
+fn handle_game_stream(mut stream: TcpStream, xor: &mut Xor) {
     stream.set_nodelay(true).unwrap();
     stream.set_nonblocking(true).unwrap();
 
     loop {
         thread::sleep(time::Duration::from_millis(10));
-
-
-        match stream.peer_addr() {
-            Ok(_) => {}
-            Err(_) => {
-                break;
-            }
-        }
 
         let mut len = [0u8; 2];
         while stream.peek(&mut len).unwrap_or(0) > 0 {
-            let mut test = [0u8; 1024];
-            let test_len = stream.peek(&mut test).unwrap();
-
-            println!("Stream peek: {:02X?}", test.get(0..test_len).unwrap());
-            println!("Stream len: {}", test_len);
-            println!("Header size: {}", i16::from_le_bytes(len));
-
             match stream.read_exact(&mut len) {
                 Ok(_) => {}
                 Err(_) => {
@@ -421,13 +284,10 @@ fn handle_game_stream(mut stream: TcpStream, mut xor: Xor) {
                     packet.write_int32(0);
                     packet.pad_bits();
                     packet.add_checksum();
+                    packet.xor_encrypt(xor);
 
-                    let encrypted = xor.encrypt(packet.buffer);
                     let mut write = stream.try_clone().unwrap();
-                    let length = (encrypted.len() + 2).to_u16().unwrap().to_le_bytes();
-                    let output = [&length, encrypted.as_slice()].concat();
-
-                    write.write(output.as_slice()).unwrap();
+                    write.write(packet.prep_output().as_slice()).unwrap();
                     write.flush().unwrap();
                 }
                 0x2b => {
@@ -492,12 +352,10 @@ fn handle_game_stream(mut stream: TcpStream, mut xor: Xor) {
                     packet.pad_bits();
                     packet.add_checksum();
 
-                    let encrypted = xor.encrypt(packet.buffer);
-                    let mut write = stream.try_clone().unwrap();
-                    let length = (encrypted.len() + 2).to_u16().unwrap().to_le_bytes();
-                    let output = [&length, encrypted.as_slice()].concat();
+                    packet.xor_encrypt(xor);
 
-                    write.write(output.as_slice()).unwrap();
+                    let mut write = stream.try_clone().unwrap();
+                    write.write(packet.prep_output().as_slice()).unwrap();
                     write.flush().unwrap();
                 }
                 0x12 => {
@@ -544,14 +402,11 @@ fn handle_game_stream(mut stream: TcpStream, mut xor: Xor) {
                     packet.pad_bits();
                     packet.add_checksum();
 
-                    let encrypted = xor.encrypt(packet.buffer);
+                    packet.xor_encrypt(xor);
+
                     let mut write = stream.try_clone().unwrap();
-                    let length = (encrypted.len() + 2).to_u16().unwrap().to_le_bytes();
-                    let output = [&length, encrypted.as_slice()].concat();
-
-                    write.write(output.as_slice()).unwrap();
+                    write.write(packet.prep_output().as_slice()).unwrap();
                     write.flush().unwrap();
-
 
                     let mut packet = ServerPacket::new();
                     packet.write_uint8(0x73);
@@ -559,12 +414,10 @@ fn handle_game_stream(mut stream: TcpStream, mut xor: Xor) {
 
                     packet.pad_bits();
                     packet.add_checksum();
-                    let encrypted = xor.encrypt(packet.buffer);
-                    let mut write = stream.try_clone().unwrap();
-                    let length = (encrypted.len() + 2).to_u16().unwrap().to_le_bytes();
-                    let output = [&length, encrypted.as_slice()].concat();
+                    packet.xor_encrypt(xor);
 
-                    write.write(output.as_slice()).unwrap();
+                    let mut write = stream.try_clone().unwrap();
+                    write.write(packet.prep_output().as_slice()).unwrap();
                     write.flush().unwrap();
                 }
                 0x11 => {
@@ -698,19 +551,17 @@ fn handle_game_stream(mut stream: TcpStream, mut xor: Xor) {
                     packet.pad_bits();
                     packet.add_checksum();
 
-                    let encrypted = xor.encrypt(packet.buffer);
+                    packet.xor_encrypt(xor);
+
                     let mut write = stream.try_clone().unwrap();
-                    let length = (encrypted.len() + 2).to_u16().unwrap().to_le_bytes();
-                    let output = [&length, encrypted.as_slice()].concat();
-
-                    write.write(output.as_slice()).unwrap();
+                    write.write(packet.prep_output().as_slice()).unwrap();
                     write.flush().unwrap();
-
 
                     let mut packet = ServerPacket::new();
                     packet.write_uint8(0xFE);
+                    packet.write_uint16(0x5F);
 
-                    let mut list: Vec<i32> = vec![0; 75+100+17];
+                    let mut list: Vec<i32> = vec![0; 75 + 100 + 17];
                     for i in 0..=74 {
                         list[i] = i.to_i32().unwrap();
                     }
@@ -729,59 +580,50 @@ fn handle_game_stream(mut stream: TcpStream, mut xor: Xor) {
                         packet.write_int32(action);
                     }
 
-
                     packet.pad_bits();
                     packet.add_checksum();
 
-                    let encrypted = xor.encrypt(packet.buffer);
-                    let mut write = stream.try_clone().unwrap();
-                    let length = (encrypted.len() + 2).to_u16().unwrap().to_le_bytes();
-                    let output = [&length, encrypted.as_slice()].concat();
+                    packet.xor_encrypt(xor);
 
-                    write.write(output.as_slice()).unwrap();
+                    let mut write = stream.try_clone().unwrap();
+                    write.write(packet.prep_output().as_slice()).unwrap();
                     write.flush().unwrap();
                 }
-                0xd0 => {
-                    match data[1] {
-                        0x2a => {
-                            let mut packet = ServerPacket::new();
-                            packet.write_uint8(0xFE);
-                            packet.write_uint16(0x46);
-                            packet.write_int32(2);
-                            packet.write_int32(1);
-                            packet.write_int32(2);
+                0xd0 => match data[1] {
+                    0x2a => {
+                        let mut packet = ServerPacket::new();
+                        packet.write_uint8(0xFE);
+                        packet.write_uint16(0x46);
+                        packet.write_int32(2);
+                        packet.write_int32(1);
+                        packet.write_int32(2);
 
-                            packet.pad_bits();
-                            packet.add_checksum();
+                        packet.pad_bits();
+                        packet.add_checksum();
 
-                            let encrypted = xor.encrypt(packet.buffer);
-                            let mut write = stream.try_clone().unwrap();
-                            let length = (encrypted.len() + 2).to_u16().unwrap().to_le_bytes();
-                            let output = [&length, encrypted.as_slice()].concat();
+                        packet.xor_encrypt(xor);
 
-                            write.write(output.as_slice()).unwrap();
-                            write.flush().unwrap();
-                        },
-                        0x58 => {
-                            let mut packet = ServerPacket::new();
-                            packet.write_uint8(0xFE);
-                            packet.write_uint16(0x93);
-                            packet.write_int32(0);
-
-                            packet.pad_bits();
-                            packet.add_checksum();
-
-                            let encrypted = xor.encrypt(packet.buffer);
-                            let mut write = stream.try_clone().unwrap();
-                            let length = (encrypted.len() + 2).to_u16().unwrap().to_le_bytes();
-                            let output = [&length, encrypted.as_slice()].concat();
-
-                            write.write(output.as_slice()).unwrap();
-                            write.flush().unwrap();
-                        }
-                        _ => {}
+                        let mut write = stream.try_clone().unwrap();
+                        write.write(packet.prep_output().as_slice()).unwrap();
+                        write.flush().unwrap();
                     }
-                }
+                    0x58 => {
+                        let mut packet = ServerPacket::new();
+                        packet.write_uint8(0xFE);
+                        packet.write_uint16(0x93);
+                        packet.write_int32(0);
+
+                        packet.pad_bits();
+                        packet.add_checksum();
+
+                        packet.xor_encrypt(xor);
+
+                        let mut write = stream.try_clone().unwrap();
+                        write.write(packet.prep_output().as_slice()).unwrap();
+                        write.flush().unwrap();
+                    }
+                    _ => {}
+                },
                 0x1f => {
                     let mut packet = ServerPacket::new();
                     packet.write_uint8(0xB9);
@@ -792,12 +634,10 @@ fn handle_game_stream(mut stream: TcpStream, mut xor: Xor) {
                     packet.pad_bits();
                     packet.add_checksum();
 
-                    let encrypted = xor.encrypt(packet.buffer);
-                    let mut write = stream.try_clone().unwrap();
-                    let length = (encrypted.len() + 2).to_u16().unwrap().to_le_bytes();
-                    let output = [&length, encrypted.as_slice()].concat();
+                    packet.xor_encrypt(xor);
 
-                    write.write(output.as_slice()).unwrap();
+                    let mut write = stream.try_clone().unwrap();
+                    write.write(packet.prep_output().as_slice()).unwrap();
                     write.flush().unwrap();
                 }
                 0x0f => {
@@ -826,12 +666,10 @@ fn handle_game_stream(mut stream: TcpStream, mut xor: Xor) {
                     packet.pad_bits();
                     packet.add_checksum();
 
-                    let encrypted = xor.encrypt(packet.buffer);
-                    let mut write = stream.try_clone().unwrap();
-                    let length = (encrypted.len() + 2).to_u16().unwrap().to_le_bytes();
-                    let output = [&length, encrypted.as_slice()].concat();
+                    packet.xor_encrypt(xor);
 
-                    write.write(output.as_slice()).unwrap();
+                    let mut write = stream.try_clone().unwrap();
+                    write.write(packet.prep_output().as_slice()).unwrap();
                     write.flush().unwrap();
                 }
                 packet => {
@@ -839,82 +677,5 @@ fn handle_game_stream(mut stream: TcpStream, mut xor: Xor) {
                 }
             }
         }
-
     }
-}
-
-fn main() -> std::io::Result<()> {
-    thread::spawn(|| {
-        let game_server = TcpListener::bind("127.0.0.1:7778").unwrap();
-        for stream in game_server.incoming() {
-            match stream {
-                Ok(stream) => {
-                    println!("Game server connection established");
-                    let xor = Xor::new();
-                    thread::spawn(move || handle_game_stream(stream, xor));
-                }
-                Err(_) => {}
-            }
-        }
-    });
-
-    let login_server = TcpListener::bind("127.0.0.1:2106")?;
-    for stream in login_server.incoming() {
-        match stream {
-            Ok(stream) => {
-                println!("Login server connection established");
-
-                let session = Session::new();
-                let mut packet = ServerPacket::new();
-                packet.write_uint8(0);
-                packet.write_int32(1234);
-                packet.write_int32(0xc621i32);
-                packet.write_bytes(session.rsa_key.scramble_modulus());
-                packet.write_int32(0);
-                packet.write_int32(0);
-                packet.write_int32(0);
-                packet.write_int32(0);
-                packet.write_bytes(Vec::from([
-                    0x6bu8, 0x60u8, 0xcbu8, 0x5bu8, 0x82u8, 0xceu8, 0x90u8, 0xb1u8, 0xccu8, 0x2bu8,
-                    0x6cu8, 0x55u8, 0x6cu8, 0x6cu8, 0x6cu8, 0x6cu8,
-                ]));
-                packet.write_uint8(0);
-                packet.write_bytes(Vec::from([0u8; 14]));
-
-                packet.auth_encypher();
-                packet.pad_bits();
-
-                packet.blowfish_encrypt(session.blowfish);
-
-                let length = (packet.len() + 2).to_u16().unwrap().to_le_bytes();
-                let output = [&length, packet.buffer.as_slice()].concat();
-
-                let mut write = stream.try_clone().unwrap();
-                thread::spawn(move || handle_stream(stream.try_clone().unwrap(), session));
-
-                write.write(output.as_slice()).unwrap();
-                write.flush().unwrap();
-            }
-            Err(_) => {}
-        }
-    }
-
-    Ok(())
-}
-
-fn swap32(block: &[u8]) -> [u8; 8] {
-    let mut output = [0u8; 8];
-    let mut iteration = 1;
-    for i in block.chunks(4) {
-        let mut counter = iteration * 4;
-
-        for j in i {
-            output[counter - 1] = j.clone();
-            counter -= 1;
-        }
-
-        iteration += 1;
-    }
-
-    output
 }
