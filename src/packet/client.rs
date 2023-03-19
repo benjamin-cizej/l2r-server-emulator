@@ -4,7 +4,6 @@ use crate::network::serverpacket::swap32;
 use crypto::blowfish::Blowfish;
 use crypto::symmetriccipher::BlockDecryptor;
 use num::ToPrimitive;
-use rsa::signature::digest::typenum::op;
 use std::io;
 use std::io::ErrorKind::ConnectionAborted;
 use std::io::Read;
@@ -40,7 +39,7 @@ pub trait FromDecryptedPacket {
     fn from_decrypted_packet(packet: Vec<u8>) -> Self;
 }
 
-pub fn decrypt_client_packet(stream: &mut TcpStream, blowfish: &Blowfish) -> io::Result<Vec<u8>> {
+pub fn decrypt_login_packet(stream: &mut TcpStream, blowfish: &Blowfish) -> io::Result<Vec<u8>> {
     let mut len = [0u8; 2];
     match stream.read(&mut len) {
         Ok(0) => {

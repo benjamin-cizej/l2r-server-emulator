@@ -1,7 +1,8 @@
+use crate::crypto::Scramble;
 use crate::network::serverpacket::ServerPacket;
 use crate::packet::server::ServerPacketOutput;
 use crate::structs::Server;
-use crate::{Scramble, Session};
+use crate::Session;
 use crypto::blowfish::Blowfish;
 
 pub struct InitPacket {

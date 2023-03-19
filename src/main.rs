@@ -1,16 +1,5 @@
-extern crate core;
-
-use crate::network::serverpacket::ServerPacket;
-use crate::packet::client::login::RequestAuthLoginPacket;
-use crate::packet::client::{decrypt_client_packet, FromDecryptedPacket, LoginClientPacketEnum};
-use crate::packet::server::login::{InitPacket, LoginOkPacket, PlayOkPacket, ServerListPacket};
-use crate::packet::server::{send_packet, ServerPacketOutput};
-use crate::packet::{client, server};
-use crate::structs::Server;
-use crypto::blowfish::Blowfish;
+use ::crypto::blowfish::Blowfish;
 use num::ToPrimitive;
-use rand::{thread_rng, Rng};
-use rsa::{BigUint, PublicKeyParts, RsaPrivateKey};
 use std::io::ErrorKind;
 use std::net::Ipv4Addr;
 use std::{
@@ -19,151 +8,40 @@ use std::{
     thread, time,
 };
 
+use crate::crypto::Xor;
+use crate::network::serverpacket::ServerPacket;
+use crate::packet::client::login::RequestAuthLoginPacket;
+use crate::packet::client::{decrypt_login_packet, FromDecryptedPacket, LoginClientPacketEnum};
+use crate::packet::server::login::{InitPacket, LoginOkPacket, PlayOkPacket, ServerListPacket};
+use crate::packet::server::{send_packet, ServerPacketOutput};
+use crate::packet::{client, server};
+use crate::structs::{Server, Session};
+
+mod crypto;
 mod network;
 mod packet;
 mod structs;
-
-pub struct Xor {
-    enabled: bool,
-    secret1: [u8; 16],
-    secret2: [u8; 16],
-}
-
-impl Xor {
-    fn new() -> Xor {
-        Xor {
-            enabled: false,
-            secret1: [
-                0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xc8, 0x27, 0x93, 0x01, 0xa1, 0x6c,
-                0x31, 0x97,
-            ],
-            secret2: [
-                0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xc8, 0x27, 0x93, 0x01, 0xa1, 0x6c,
-                0x31, 0x97,
-            ],
-        }
-    }
-
-    fn decrypt(&mut self, data: Vec<u8>) -> Vec<u8> {
-        if !self.enabled {
-            return data;
-        }
-
-        let mut ecx = 0;
-        let mut decrypted = data.clone();
-        for i in 0..data.len() {
-            let edx = decrypted[i];
-            decrypted[i] = edx ^ self.secret1[i & 0xf] ^ ecx;
-            ecx = edx;
-        }
-
-        let mut secret = i32::from_le_bytes(self.secret1[8..12].try_into().unwrap());
-        secret += decrypted.len().to_i32().unwrap();
-        let secret = secret.to_le_bytes();
-        for i in 8..12 {
-            self.secret1[i] = secret[i - 8];
-        }
-
-        decrypted
-    }
-
-    fn encrypt(&mut self, data: Vec<u8>) -> Vec<u8> {
-        if !self.enabled {
-            self.enabled = true;
-            return data;
-        }
-
-        let mut ecx = 0;
-        let mut encrypted = data.clone();
-        for i in 0..data.len() {
-            let edx = encrypted[i];
-            ecx ^= edx ^ self.secret2[i & 0xf];
-            encrypted[i] = ecx;
-        }
-
-        let mut secret = i32::from_le_bytes(self.secret2[8..12].try_into().unwrap());
-        secret += encrypted.len().to_i32().unwrap();
-        let secret = secret.to_le_bytes();
-        for i in 8..12 {
-            self.secret2[i] = secret[i - 8];
-        }
-
-        encrypted
-    }
-}
-
-pub struct Session {
-    session_id: u32,
-    blowfish_key: [u8; 16],
-    rsa_key: RsaPrivateKey,
-}
-
-impl Session {
-    fn new() -> Session {
-        let mut blowfish_key = [0u8; 16];
-        thread_rng().fill(&mut blowfish_key[..]);
-
-        Session {
-            session_id: thread_rng().gen_range(0..0x8000000),
-            blowfish_key,
-            rsa_key: RsaPrivateKey::new_with_exp(&mut thread_rng(), 1024, &BigUint::from(65537u32))
-                .unwrap(),
-        }
-    }
-}
-
-pub trait Scramble {
-    fn scramble_modulus(&self) -> Vec<u8>;
-}
-
-impl Scramble for RsaPrivateKey {
-    fn scramble_modulus(&self) -> Vec<u8> {
-        let modulus = self.to_public_key().n().to_bytes_be();
-        let mut scrambled = modulus.clone();
-        for i in 0..=3 {
-            scrambled.swap(i, 0x4d + i);
-        }
-
-        for i in 0..0x40 {
-            scrambled[i] ^= scrambled[0x40 + i];
-        }
-
-        for i in 0..0x04 {
-            scrambled[0x0d + i] ^= scrambled[0x34 + i];
-        }
-        for i in 0..0x40 {
-            scrambled[0x40 + i] ^= scrambled[i];
-        }
-
-        scrambled
-    }
-}
 
 fn main() -> std::io::Result<()> {
     thread::spawn(|| {
         let game_server = TcpListener::bind("127.0.0.1:7778").unwrap();
         for stream in game_server.incoming() {
-            match stream {
-                Ok(stream) => {
-                    println!("Game server connection established");
-                    let mut xor = Xor::new();
-                    thread::spawn(move || handle_game_stream(stream, &mut xor));
-                }
-                Err(_) => {}
+            if let Ok(stream) = stream {
+                println!("Game server connection established");
+                stream.set_nodelay(true).unwrap();
+                stream.set_nonblocking(true).unwrap();
+                thread::spawn(move || handle_game_stream(stream));
             }
         }
     });
 
     let login_server = TcpListener::bind("127.0.0.1:2106")?;
     for stream in login_server.incoming() {
-        match stream {
-            Ok(stream) => {
-                println!("Login server connection established");
-                stream.set_nodelay(true).unwrap();
-                stream.set_nonblocking(true).unwrap();
-                thread::spawn(move || handle_stream(stream.try_clone().unwrap()));
-            }
-            Err(_) => {}
+        if let Ok(stream) = stream {
+            println!("Login server connection established");
+            stream.set_nodelay(true).unwrap();
+            stream.set_nonblocking(true).unwrap();
+            thread::spawn(move || handle_stream(stream.try_clone().unwrap()));
         }
     }
 
@@ -179,7 +57,7 @@ fn handle_stream(mut stream: TcpStream) {
         thread::sleep(time::Duration::from_millis(10));
 
         loop {
-            match decrypt_client_packet(&mut stream, &blowfish) {
+            match decrypt_login_packet(&mut stream, &blowfish) {
                 Ok(mut decrypted_packet) => {
                     if let Some(packet_type) = LoginClientPacketEnum::from_packet(&decrypted_packet)
                     {
@@ -252,10 +130,8 @@ fn handle_stream(mut stream: TcpStream) {
     println!("Login server connection terminated");
 }
 
-fn handle_game_stream(mut stream: TcpStream, xor: &mut Xor) {
-    stream.set_nodelay(true).unwrap();
-    stream.set_nonblocking(true).unwrap();
-
+fn handle_game_stream(mut stream: TcpStream) {
+    let mut xor = Xor::new();
     loop {
         thread::sleep(time::Duration::from_millis(10));
 
@@ -284,7 +160,7 @@ fn handle_game_stream(mut stream: TcpStream, xor: &mut Xor) {
                     packet.write_int32(0);
                     packet.pad_bits();
                     packet.add_checksum();
-                    packet.xor_encrypt(xor);
+                    packet.xor_encrypt(&mut xor);
 
                     let mut write = stream.try_clone().unwrap();
                     write.write(packet.prep_output().as_slice()).unwrap();
@@ -352,7 +228,7 @@ fn handle_game_stream(mut stream: TcpStream, xor: &mut Xor) {
                     packet.pad_bits();
                     packet.add_checksum();
 
-                    packet.xor_encrypt(xor);
+                    packet.xor_encrypt(&mut xor);
 
                     let mut write = stream.try_clone().unwrap();
                     write.write(packet.prep_output().as_slice()).unwrap();
@@ -402,7 +278,7 @@ fn handle_game_stream(mut stream: TcpStream, xor: &mut Xor) {
                     packet.pad_bits();
                     packet.add_checksum();
 
-                    packet.xor_encrypt(xor);
+                    packet.xor_encrypt(&mut xor);
 
                     let mut write = stream.try_clone().unwrap();
                     write.write(packet.prep_output().as_slice()).unwrap();
@@ -414,7 +290,7 @@ fn handle_game_stream(mut stream: TcpStream, xor: &mut Xor) {
 
                     packet.pad_bits();
                     packet.add_checksum();
-                    packet.xor_encrypt(xor);
+                    packet.xor_encrypt(&mut xor);
 
                     let mut write = stream.try_clone().unwrap();
                     write.write(packet.prep_output().as_slice()).unwrap();
@@ -551,7 +427,7 @@ fn handle_game_stream(mut stream: TcpStream, xor: &mut Xor) {
                     packet.pad_bits();
                     packet.add_checksum();
 
-                    packet.xor_encrypt(xor);
+                    packet.xor_encrypt(&mut xor);
 
                     let mut write = stream.try_clone().unwrap();
                     write.write(packet.prep_output().as_slice()).unwrap();
@@ -583,7 +459,7 @@ fn handle_game_stream(mut stream: TcpStream, xor: &mut Xor) {
                     packet.pad_bits();
                     packet.add_checksum();
 
-                    packet.xor_encrypt(xor);
+                    packet.xor_encrypt(&mut xor);
 
                     let mut write = stream.try_clone().unwrap();
                     write.write(packet.prep_output().as_slice()).unwrap();
@@ -601,7 +477,7 @@ fn handle_game_stream(mut stream: TcpStream, xor: &mut Xor) {
                         packet.pad_bits();
                         packet.add_checksum();
 
-                        packet.xor_encrypt(xor);
+                        packet.xor_encrypt(&mut xor);
 
                         let mut write = stream.try_clone().unwrap();
                         write.write(packet.prep_output().as_slice()).unwrap();
@@ -616,7 +492,7 @@ fn handle_game_stream(mut stream: TcpStream, xor: &mut Xor) {
                         packet.pad_bits();
                         packet.add_checksum();
 
-                        packet.xor_encrypt(xor);
+                        packet.xor_encrypt(&mut xor);
 
                         let mut write = stream.try_clone().unwrap();
                         write.write(packet.prep_output().as_slice()).unwrap();
@@ -634,7 +510,7 @@ fn handle_game_stream(mut stream: TcpStream, xor: &mut Xor) {
                     packet.pad_bits();
                     packet.add_checksum();
 
-                    packet.xor_encrypt(xor);
+                    packet.xor_encrypt(&mut xor);
 
                     let mut write = stream.try_clone().unwrap();
                     write.write(packet.prep_output().as_slice()).unwrap();
@@ -666,7 +542,7 @@ fn handle_game_stream(mut stream: TcpStream, xor: &mut Xor) {
                     packet.pad_bits();
                     packet.add_checksum();
 
-                    packet.xor_encrypt(xor);
+                    packet.xor_encrypt(&mut xor);
 
                     let mut write = stream.try_clone().unwrap();
                     write.write(packet.prep_output().as_slice()).unwrap();
