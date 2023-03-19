@@ -136,19 +136,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "l2r-server-emulator"
-version = "0.1.0"
-dependencies = [
- "bytes",
- "num",
- "pki",
- "rand 0.8.5",
- "rsa",
- "rust-crypto",
- "ucs2",
-]
-
-[[package]]
 name = "lazy_static"
 version = "1.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -168,6 +155,19 @@ name = "libm"
 version = "0.2.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "348108ab3fba42ec82ff6e9564fc4ca0247bdccdc68dd8af9764bbc79c3c8ffb"
+
+[[package]]
+name = "loginserver"
+version = "0.1.0"
+dependencies = [
+ "bytes",
+ "num",
+ "pki",
+ "rand 0.8.5",
+ "rsa",
+ "rust-crypto",
+ "ucs2",
+]
 
 [[package]]
 name = "num"

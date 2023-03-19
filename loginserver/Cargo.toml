@@ -1,0 +1,15 @@
+[package]
+name = "loginserver"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+bytes = "1.4.0"
+num = "0.4.0"
+pki = "0.1.2"
+rand = "0.8.5"
+rsa = { version = "0.8.2", features = ["expose-internals"] }
+rust-crypto = "0.2.36"
+ucs2 = "0.3.2"
