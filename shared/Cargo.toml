@@ -9,6 +9,6 @@ edition = "2021"
 bytes = "1.4.0"
 num = "0.4.0"
 rand = "0.8.5"
-rsa = "0.8.2"
+rsa = { version = "0.8.2", features = ["expose-internals"] }
 rust-crypto = "0.2.36"
 ucs2 = "0.3.2"
