@@ -1,6 +1,6 @@
 use crate::packet::server::ServerPacketOutput;
-use crypto::blowfish::Blowfish;
 use shared::crypto::Scramble;
+use shared::extcrypto::blowfish::Blowfish;
 use shared::network::serverpacket::ServerPacket;
 use shared::structs::server::Server;
 use shared::structs::session::Session;

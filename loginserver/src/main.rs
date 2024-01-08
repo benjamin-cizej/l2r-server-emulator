@@ -1,4 +1,4 @@
-use crypto::blowfish::Blowfish;
+use shared::extcrypto::blowfish::Blowfish;
 use shared::structs::server::Server;
 use shared::structs::session::Session;
 use std::io::ErrorKind;

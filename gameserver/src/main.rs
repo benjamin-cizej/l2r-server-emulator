@@ -1,6 +1,6 @@
-use num::ToPrimitive;
 use shared::crypto::Xor;
 use shared::network::serverpacket::ServerPacket;
+use shared::num::ToPrimitive;
 use std::io::{Read, Write};
 use std::net::{TcpListener, TcpStream};
 use std::{thread, time};

@@ -1,6 +1,6 @@
-use rand::thread_rng;
-use rsa::internals::decrypt;
-use rsa::BigUint;
+use shared::rand::thread_rng;
+use shared::rsa::internals::decrypt;
+use shared::rsa::BigUint;
 use shared::structs::session::Session;
 
 use crate::packet::client::FromDecryptedPacket;
