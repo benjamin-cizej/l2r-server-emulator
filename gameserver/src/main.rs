@@ -11,6 +11,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let game_server = TcpListener::bind("127.0.0.1:7778").await?;
     loop {
         let (stream, _) = game_server.accept().await?;
+        stream.set_nodelay(true).unwrap();
         tokio::spawn(async move { handle_game_stream(stream).await });
     }
 }
@@ -19,18 +20,17 @@ async fn handle_game_stream(mut stream: TcpStream) {
     let mut xor = Xor::new();
     loop {
         let mut len = [0u8; 2];
-        while stream.peek(&mut len).await.unwrap_or(0) > 0 {
-            match stream.read_exact(&mut len).await {
-                Ok(_) => {}
-                Err(_) => {
-                    continue;
-                }
-            };
+        while let Ok(n) = stream.read(&mut len).await {
+            if n == 0 {
+                println!("Connection closed.");
+                return;
+            }
+
             let mut data = vec![0; u16::from_le_bytes(len).to_usize().unwrap() - 2];
             stream.read_exact(&mut data).await.unwrap_or(0);
             let data = xor.decrypt(data);
 
-            println!("Packet received {:02X}", data[0]);
+            println!("Packet received 0x{:02X?}", data[0]);
             match data[0] {
                 0x0e => {
                     let mut packet = ServerPacket::new();
@@ -373,7 +373,9 @@ async fn handle_game_stream(mut stream: TcpStream) {
                         stream.write(packet.prep_output().as_slice()).await.unwrap();
                         stream.flush().await.unwrap();
                     }
-                    _ => {}
+                    packet => {
+                        println!("Unknown packet received: 0xD0 0x{:02X?}", packet);
+                    }
                 },
                 0x1f => {
                     let mut packet = ServerPacket::new();
