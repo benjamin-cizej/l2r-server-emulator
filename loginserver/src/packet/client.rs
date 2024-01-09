@@ -4,10 +4,10 @@ use shared::extcrypto::blowfish::Blowfish;
 use shared::extcrypto::symmetriccipher::BlockDecryptor;
 use shared::network::serverpacket::swap32;
 use shared::num::ToPrimitive;
+use shared::tokio::io::AsyncReadExt;
+use shared::tokio::net::TcpStream;
 use std::io;
 use std::io::ErrorKind::ConnectionAborted;
-use std::io::Read;
-use std::net::TcpStream;
 
 pub enum LoginClientPacketEnum {
     RequestServerLogin,
@@ -39,9 +39,12 @@ pub trait FromDecryptedPacket {
     fn from_decrypted_packet(packet: Vec<u8>) -> Self;
 }
 
-pub fn decrypt_login_packet(stream: &mut TcpStream, blowfish: &Blowfish) -> io::Result<Vec<u8>> {
+pub async fn decrypt_login_packet(
+    stream: &mut TcpStream,
+    blowfish: &Blowfish,
+) -> io::Result<Vec<u8>> {
     let mut len = [0u8; 2];
-    match stream.read(&mut len) {
+    match stream.read(&mut len).await {
         Ok(0) => {
             return Err(io::Error::from(ConnectionAborted));
         }
@@ -52,7 +55,7 @@ pub fn decrypt_login_packet(stream: &mut TcpStream, blowfish: &Blowfish) -> io::
     }
 
     let mut data = vec![0; u16::from_le_bytes(len).to_usize().unwrap()];
-    stream.read(&mut data).unwrap();
+    stream.read(&mut data).await.unwrap();
 
     let mut decrypted_stream: Vec<u8> = vec![];
     for i in data.chunks(8) {

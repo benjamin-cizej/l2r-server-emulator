@@ -25,16 +25,14 @@ impl RequestAuthLoginPacket {
         self.session_id
     }
 
-    pub fn decrypt_credentials(packet: &mut Vec<u8>, session: &Session) {
+    pub fn decrypt_credentials(packet: &Vec<u8>, session: &Session) {
         if let Some(credentials) = packet.get(1..129) {
-            println!("PACKET LEN: {}", packet.len());
-            println!("CREDS LEN: {}", credentials.len());
             let credentials = BigUint::from_bytes_be(credentials);
             match decrypt(Some(&mut thread_rng()), &session.rsa_key, &credentials) {
                 Ok(result) => {
                     let mut replacement = vec![0u8; 91];
                     replacement.append(&mut result.to_bytes_be());
-                    packet.splice(1..129, replacement);
+                    packet.clone().splice(1..129, replacement);
                 }
                 Err(e) => {
                     println!("ERROR DECRYPTING {:?}", e);

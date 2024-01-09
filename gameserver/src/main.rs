@@ -1,37 +1,33 @@
 use shared::crypto::Xor;
 use shared::network::serverpacket::ServerPacket;
 use shared::num::ToPrimitive;
-use std::io::{Read, Write};
-use std::net::{TcpListener, TcpStream};
-use std::{thread, time};
+use shared::tokio;
+use shared::tokio::io::{AsyncReadExt, AsyncWriteExt};
+use shared::tokio::net::{TcpListener, TcpStream};
+use std::error::Error;
 
-fn main() {
-    let game_server = TcpListener::bind("127.0.0.1:7778").unwrap();
-    for stream in game_server.incoming() {
-        if let Ok(stream) = stream {
-            println!("Game server connection established");
-            stream.set_nodelay(true).unwrap();
-            stream.set_nonblocking(true).unwrap();
-            thread::spawn(move || handle_game_stream(stream));
-        }
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn Error>> {
+    let game_server = TcpListener::bind("127.0.0.1:7778").await?;
+    loop {
+        let (stream, _) = game_server.accept().await?;
+        tokio::spawn(async move { handle_game_stream(stream).await });
     }
 }
 
-fn handle_game_stream(mut stream: TcpStream) {
+async fn handle_game_stream(mut stream: TcpStream) {
     let mut xor = Xor::new();
     loop {
-        thread::sleep(time::Duration::from_millis(10));
-
         let mut len = [0u8; 2];
-        while stream.peek(&mut len).unwrap_or(0) > 0 {
-            match stream.read_exact(&mut len) {
+        while stream.peek(&mut len).await.unwrap_or(0) > 0 {
+            match stream.read_exact(&mut len).await {
                 Ok(_) => {}
                 Err(_) => {
                     continue;
                 }
             };
             let mut data = vec![0; u16::from_le_bytes(len).to_usize().unwrap() - 2];
-            stream.read_exact(&mut data).unwrap_or(());
+            stream.read_exact(&mut data).await.unwrap_or(0);
             let data = xor.decrypt(data);
 
             println!("Packet received {:02X}", data[0]);
@@ -49,9 +45,8 @@ fn handle_game_stream(mut stream: TcpStream) {
                     packet.add_checksum();
                     packet.xor_encrypt(&mut xor);
 
-                    let mut write = stream.try_clone().unwrap();
-                    write.write(packet.prep_output().as_slice()).unwrap();
-                    write.flush().unwrap();
+                    stream.write(packet.prep_output().as_slice()).await.unwrap();
+                    stream.flush().await.unwrap();
                 }
                 0x2b => {
                     let mut packet = ServerPacket::new();
@@ -117,9 +112,8 @@ fn handle_game_stream(mut stream: TcpStream) {
 
                     packet.xor_encrypt(&mut xor);
 
-                    let mut write = stream.try_clone().unwrap();
-                    write.write(packet.prep_output().as_slice()).unwrap();
-                    write.flush().unwrap();
+                    stream.write(packet.prep_output().as_slice()).await.unwrap();
+                    stream.flush().await.unwrap()
                 }
                 0x12 => {
                     let mut packet = ServerPacket::new();
@@ -167,9 +161,8 @@ fn handle_game_stream(mut stream: TcpStream) {
 
                     packet.xor_encrypt(&mut xor);
 
-                    let mut write = stream.try_clone().unwrap();
-                    write.write(packet.prep_output().as_slice()).unwrap();
-                    write.flush().unwrap();
+                    stream.write(packet.prep_output().as_slice()).await.unwrap();
+                    stream.flush().await.unwrap();
 
                     let mut packet = ServerPacket::new();
                     packet.write_uint8(0x73);
@@ -179,9 +172,8 @@ fn handle_game_stream(mut stream: TcpStream) {
                     packet.add_checksum();
                     packet.xor_encrypt(&mut xor);
 
-                    let mut write = stream.try_clone().unwrap();
-                    write.write(packet.prep_output().as_slice()).unwrap();
-                    write.flush().unwrap();
+                    stream.write(packet.prep_output().as_slice()).await.unwrap();
+                    stream.flush().await.unwrap();
                 }
                 0x11 => {
                     let mut packet = ServerPacket::new();
@@ -316,9 +308,8 @@ fn handle_game_stream(mut stream: TcpStream) {
 
                     packet.xor_encrypt(&mut xor);
 
-                    let mut write = stream.try_clone().unwrap();
-                    write.write(packet.prep_output().as_slice()).unwrap();
-                    write.flush().unwrap();
+                    stream.write(packet.prep_output().as_slice()).await.unwrap();
+                    stream.flush().await.unwrap();
 
                     let mut packet = ServerPacket::new();
                     packet.write_uint8(0xFE);
@@ -348,9 +339,8 @@ fn handle_game_stream(mut stream: TcpStream) {
 
                     packet.xor_encrypt(&mut xor);
 
-                    let mut write = stream.try_clone().unwrap();
-                    write.write(packet.prep_output().as_slice()).unwrap();
-                    write.flush().unwrap();
+                    stream.write(packet.prep_output().as_slice()).await.unwrap();
+                    stream.flush().await.unwrap();
                 }
                 0xd0 => match data[1] {
                     0x2a => {
@@ -366,9 +356,8 @@ fn handle_game_stream(mut stream: TcpStream) {
 
                         packet.xor_encrypt(&mut xor);
 
-                        let mut write = stream.try_clone().unwrap();
-                        write.write(packet.prep_output().as_slice()).unwrap();
-                        write.flush().unwrap();
+                        stream.write(packet.prep_output().as_slice()).await.unwrap();
+                        stream.flush().await.unwrap();
                     }
                     0x58 => {
                         let mut packet = ServerPacket::new();
@@ -381,9 +370,8 @@ fn handle_game_stream(mut stream: TcpStream) {
 
                         packet.xor_encrypt(&mut xor);
 
-                        let mut write = stream.try_clone().unwrap();
-                        write.write(packet.prep_output().as_slice()).unwrap();
-                        write.flush().unwrap();
+                        stream.write(packet.prep_output().as_slice()).await.unwrap();
+                        stream.flush().await.unwrap();
                     }
                     _ => {}
                 },
@@ -399,18 +387,14 @@ fn handle_game_stream(mut stream: TcpStream) {
 
                     packet.xor_encrypt(&mut xor);
 
-                    let mut write = stream.try_clone().unwrap();
-                    write.write(packet.prep_output().as_slice()).unwrap();
-                    write.flush().unwrap();
+                    stream.write(packet.prep_output().as_slice()).await.unwrap();
+                    stream.flush().await.unwrap();
                 }
                 0x0f => {
                     let mut packet = ServerPacket::new();
                     let to_x = i32::from_le_bytes(data.get(1..5).unwrap().try_into().unwrap());
                     let to_y = i32::from_le_bytes(data.get(5..9).unwrap().try_into().unwrap());
                     let to_z = i32::from_le_bytes(data.get(9..13).unwrap().try_into().unwrap());
-
-                    println!("X {:02X?}", data.get(1..5).unwrap());
-                    println!("TO {} {} {}", to_x, to_y, to_z);
 
                     let from_x = i32::from_le_bytes(data.get(13..17).unwrap().try_into().unwrap());
                     let from_y = i32::from_le_bytes(data.get(17..21).unwrap().try_into().unwrap());
@@ -431,9 +415,8 @@ fn handle_game_stream(mut stream: TcpStream) {
 
                     packet.xor_encrypt(&mut xor);
 
-                    let mut write = stream.try_clone().unwrap();
-                    write.write(packet.prep_output().as_slice()).unwrap();
-                    write.flush().unwrap();
+                    stream.write(packet.prep_output().as_slice()).await.unwrap();
+                    stream.flush().await.unwrap();
                 }
                 packet => {
                     println!("Unknown packet received: 0x{:02X?}", packet);
