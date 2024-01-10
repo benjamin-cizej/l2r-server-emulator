@@ -35,12 +35,12 @@ async fn handle_game_stream(mut stream: TcpStream) {
                 0x00 => {
                     let mut packet = ServerPacket::new();
                     packet.write_uint8(0x84);
+                    packet.pad_bits();
+                    packet.add_checksum();
+                    packet.xor_encrypt(&mut xor);
 
                     stream.write(packet.prep_output().as_slice()).await.unwrap();
                     stream.flush().await.unwrap();
-
-                    stream.shutdown().await.unwrap();
-                    return;
                 }
                 0x0e => {
                     let mut packet = ServerPacket::new();
