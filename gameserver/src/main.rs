@@ -32,6 +32,16 @@ async fn handle_game_stream(mut stream: TcpStream) {
 
             println!("Packet received 0x{:02X?}", data[0]);
             match data[0] {
+                0x00 => {
+                    let mut packet = ServerPacket::new();
+                    packet.write_uint8(0x84);
+
+                    stream.write(packet.prep_output().as_slice()).await.unwrap();
+                    stream.flush().await.unwrap();
+
+                    stream.shutdown().await.unwrap();
+                    return;
+                }
                 0x0e => {
                     let mut packet = ServerPacket::new();
                     packet.write_uint8(0x2e);
@@ -419,6 +429,85 @@ async fn handle_game_stream(mut stream: TcpStream) {
 
                     stream.write(packet.prep_output().as_slice()).await.unwrap();
                     stream.flush().await.unwrap();
+                }
+                0x57 => {
+                    let mut packet = ServerPacket::new();
+                    packet.write_uint8(0x71);
+                    packet.write_int32(1);
+
+                    packet.pad_bits();
+                    packet.add_checksum();
+
+                    packet.xor_encrypt(&mut xor);
+
+                    stream.write(packet.prep_output().as_slice()).await.unwrap();
+                    stream.flush().await.unwrap();
+
+                    let mut packet = ServerPacket::new();
+                    packet.write_uint8(0x09);
+                    packet.write_int32(1);
+                    packet.write_int32(7);
+                    packet.write_uint8(0);
+                    packet.write_text("yolo");
+                    packet.write_int32(1);
+                    packet.write_text("troll");
+                    packet.write_int32(0x55555555);
+                    packet.write_int32(0);
+                    packet.write_int32(0);
+                    packet.write_int32(0);
+                    packet.write_int32(1);
+                    packet.write_int32(18);
+                    packet.write_int32(1);
+                    packet.write_int32(45478);
+                    packet.write_int32(48916);
+                    packet.write_int32(-3086);
+                    packet.write_double(96.0);
+                    packet.write_double(50.0);
+                    packet.write_int32(0);
+                    packet.write_int64(0);
+                    packet.write_double(0.0);
+                    packet.write_int32(1);
+                    packet.write_int32(0);
+                    packet.write_int32(0);
+                    packet.write_int32(0);
+
+                    for _i in 0..7 {
+                        packet.write_int32(0);
+                    }
+
+                    for _i in 0..26 {
+                        packet.write_int32(0);
+                    }
+
+                    packet.write_int32(0);
+                    packet.write_int32(0);
+                    packet.write_int32(0);
+
+                    packet.write_double(96.0);
+                    packet.write_double(50.0);
+                    packet.write_int32(0);
+                    packet.write_int32(18);
+                    packet.write_int32(1);
+                    packet.write_uint8(127);
+                    packet.write_int32(0);
+                    packet.write_int32(0);
+                    packet.write_int32(0);
+                    packet.write_int32(0);
+                    packet.write_int32(0);
+                    packet.write_int32(0);
+
+                    packet.write_double(0.0);
+                    packet.write_double(0.0);
+
+                    packet.write_int32(20000);
+
+                    packet.pad_bits();
+                    packet.add_checksum();
+
+                    packet.xor_encrypt(&mut xor);
+
+                    stream.write(packet.prep_output().as_slice()).await.unwrap();
+                    stream.flush().await.unwrap()
                 }
                 packet => {
                     println!("Unknown packet received: 0x{:02X?}", packet);
