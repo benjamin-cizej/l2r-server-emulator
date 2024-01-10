@@ -1,4 +1,8 @@
-pub mod login;
+mod auth_gameguard;
+mod request_auth_login;
+
+pub use auth_gameguard::AuthGameGuardPacket;
+pub use request_auth_login::RequestAuthLoginPacket;
 
 use shared::extcrypto::blowfish::Blowfish;
 use shared::extcrypto::symmetriccipher::BlockDecryptor;
@@ -9,27 +13,27 @@ use shared::tokio::net::TcpStream;
 use std::io;
 use std::io::ErrorKind::ConnectionAborted;
 
-pub enum LoginClientPacketEnum {
+pub enum PacketEnum {
     RequestServerLogin,
     RequestAuthLogin,
     AuthGameGuard,
     ServerList,
 }
 
-impl LoginClientPacketEnum {
-    pub fn from(opcode: &u8) -> Option<LoginClientPacketEnum> {
+impl PacketEnum {
+    pub fn from(opcode: &u8) -> Option<PacketEnum> {
         match opcode {
-            0x02 => Some(LoginClientPacketEnum::RequestServerLogin),
-            0x00 => Some(LoginClientPacketEnum::RequestAuthLogin),
-            0x07 => Some(LoginClientPacketEnum::AuthGameGuard),
-            0x05 => Some(LoginClientPacketEnum::ServerList),
+            0x02 => Some(PacketEnum::RequestServerLogin),
+            0x00 => Some(PacketEnum::RequestAuthLogin),
+            0x07 => Some(PacketEnum::AuthGameGuard),
+            0x05 => Some(PacketEnum::ServerList),
             _ => None,
         }
     }
 
-    pub fn from_packet(packet: &Vec<u8>) -> Option<LoginClientPacketEnum> {
+    pub fn from_packet(packet: &Vec<u8>) -> Option<PacketEnum> {
         return match packet.get(0) {
-            Some(opcode) => LoginClientPacketEnum::from(opcode),
+            Some(opcode) => PacketEnum::from(opcode),
             None => None,
         };
     }
@@ -39,10 +43,7 @@ pub trait FromDecryptedPacket {
     fn from_decrypted_packet(packet: Vec<u8>) -> Self;
 }
 
-pub async fn decrypt_login_packet(
-    stream: &mut TcpStream,
-    blowfish: &Blowfish,
-) -> io::Result<Vec<u8>> {
+pub async fn decrypt_packet(stream: &mut TcpStream, blowfish: &Blowfish) -> io::Result<Vec<u8>> {
     let mut len = [0u8; 2];
     match stream.read(&mut len).await {
         Ok(0) => {

@@ -1,4 +1,5 @@
 use shared::extcrypto::blowfish::Blowfish;
+use shared::network::send_packet;
 use shared::structs::server::Server;
 use shared::structs::session::Session;
 use shared::tokio;
@@ -7,12 +8,8 @@ use std::error::Error;
 use std::io::ErrorKind;
 use std::net::{Ipv4Addr, SocketAddr};
 
-use crate::packet::client;
-use crate::packet::client::{decrypt_login_packet, FromDecryptedPacket, LoginClientPacketEnum};
-use crate::packet::server::login::{
-    AuthGameGuardPacket, InitPacket, LoginOkPacket, PlayOkPacket, ServerListPacket,
-};
-use crate::packet::server::{send_packet, ServerPacketOutput};
+use crate::packet::client::FromDecryptedPacket;
+use shared::network::serverpacket::ServerPacketOutput;
 
 mod packet;
 
@@ -38,28 +35,34 @@ async fn main() -> Result<(), Box<dyn Error>> {
 async fn handle_stream(mut stream: TcpStream, addr: SocketAddr) {
     let session = Session::new();
     let blowfish = Blowfish::new(&session.blowfish_key);
-    send_packet(&mut stream, Box::new(InitPacket::new(&session))).await;
+    send_packet(
+        &mut stream,
+        Box::new(packet::server::InitPacket::new(&session)),
+    )
+    .await;
 
     loop {
-        match decrypt_login_packet(&mut stream, &blowfish).await {
+        match packet::client::decrypt_packet(&mut stream, &blowfish).await {
             Ok(decrypted_packet) => {
-                if let Some(packet_type) = LoginClientPacketEnum::from_packet(&decrypted_packet) {
+                if let Some(packet_type) =
+                    packet::client::PacketEnum::from_packet(&decrypted_packet)
+                {
                     let matched_packet: Box<dyn ServerPacketOutput + Send> = match packet_type {
-                        LoginClientPacketEnum::RequestAuthLogin => {
-                            Box::new(LoginOkPacket::new(&blowfish))
+                        packet::client::PacketEnum::RequestAuthLogin => {
+                            Box::new(packet::server::LoginOkPacket::new(&blowfish))
                         }
-                        LoginClientPacketEnum::AuthGameGuard => {
-                            let packet = client::login::AuthGameGuardPacket::from_decrypted_packet(
+                        packet::client::PacketEnum::AuthGameGuard => {
+                            let packet = packet::client::AuthGameGuardPacket::from_decrypted_packet(
                                 decrypted_packet,
                             );
                             let session_id = packet.get_session_id();
-                            let mut packet = AuthGameGuardPacket::new(&blowfish);
+                            let mut packet = packet::server::GGAuthPacket::new(&blowfish);
                             packet.session_id = session_id;
 
                             Box::new(packet)
                         }
-                        LoginClientPacketEnum::ServerList => {
-                            let mut packet = ServerListPacket::new(&blowfish);
+                        packet::client::PacketEnum::ServerList => {
+                            let mut packet = packet::server::ServerListPacket::new(&blowfish);
                             packet.list.push(Server {
                                 id: 1,
                                 ip: Ipv4Addr::new(127, 0, 0, 1),
@@ -75,8 +78,8 @@ async fn handle_stream(mut stream: TcpStream, addr: SocketAddr) {
 
                             Box::new(packet)
                         }
-                        LoginClientPacketEnum::RequestServerLogin => {
-                            Box::new(PlayOkPacket::new(&blowfish))
+                        packet::client::PacketEnum::RequestServerLogin => {
+                            Box::new(packet::server::PlayOkPacket::new(&blowfish))
                         }
                     };
 

@@ -1,16 +1,11 @@
-use shared::tokio::io::AsyncWriteExt;
-use shared::tokio::net::TcpStream;
+mod gg_auth;
+mod init;
+mod login_ok;
+mod play_ok;
+mod server_list;
 
-pub mod login;
-
-pub trait ServerPacketOutput {
-    fn to_output_stream(&self) -> Vec<u8>;
-}
-
-pub async fn send_packet(stream: &mut TcpStream, packet: Box<dyn ServerPacketOutput + Send>) {
-    stream
-        .write(packet.to_output_stream().as_slice())
-        .await
-        .unwrap();
-    stream.flush().await.unwrap();
-}
+pub use gg_auth::GGAuthPacket;
+pub use init::InitPacket;
+pub use login_ok::LoginOkPacket;
+pub use play_ok::PlayOkPacket;
+pub use server_list::ServerListPacket;

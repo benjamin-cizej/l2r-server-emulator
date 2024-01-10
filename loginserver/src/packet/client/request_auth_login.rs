@@ -1,9 +1,8 @@
+use crate::packet::client::FromDecryptedPacket;
 use shared::rand::thread_rng;
 use shared::rsa::internals::decrypt;
 use shared::rsa::BigUint;
 use shared::structs::session::Session;
-
-use crate::packet::client::FromDecryptedPacket;
 
 #[derive(Debug)]
 pub struct RequestAuthLoginPacket {
@@ -58,24 +57,6 @@ impl FromDecryptedPacket for RequestAuthLoginPacket {
             username,
             password,
             session_id: u32::from_le_bytes(packet.get(129..133).unwrap().try_into().unwrap()),
-        }
-    }
-}
-
-pub struct AuthGameGuardPacket {
-    session_id: u32,
-}
-
-impl AuthGameGuardPacket {
-    pub fn get_session_id(self) -> u32 {
-        self.session_id
-    }
-}
-
-impl FromDecryptedPacket for AuthGameGuardPacket {
-    fn from_decrypted_packet(packet: Vec<u8>) -> AuthGameGuardPacket {
-        AuthGameGuardPacket {
-            session_id: u32::from_le_bytes(packet.get(1..5).unwrap().try_into().unwrap()),
         }
     }
 }
