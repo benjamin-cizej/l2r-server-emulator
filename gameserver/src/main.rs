@@ -509,6 +509,20 @@ async fn handle_game_stream(mut stream: TcpStream) {
                     stream.write(packet.prep_output().as_slice()).await.unwrap();
                     stream.flush().await.unwrap()
                 }
+                0x6c => {
+                    let mut packet = ServerPacket::new();
+                    packet.write_uint8(0xa3);
+                    packet.write_int32(1665);
+                    packet.write_uint8(0);
+
+                    packet.pad_bits();
+                    packet.add_checksum();
+
+                    packet.xor_encrypt(&mut xor);
+
+                    stream.write(packet.prep_output().as_slice()).await.unwrap();
+                    stream.flush().await.unwrap();
+                }
                 packet => {
                     println!("Unknown packet received: 0x{:02X?}", packet);
                 }
