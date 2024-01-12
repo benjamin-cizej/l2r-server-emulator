@@ -13,27 +13,27 @@ use shared::tokio::net::TcpStream;
 use std::io;
 use std::io::ErrorKind::ConnectionAborted;
 
-pub enum PacketEnum {
+pub enum PacketTypeEnum {
     RequestServerLogin,
     RequestAuthLogin,
     AuthGameGuard,
     ServerList,
 }
 
-impl PacketEnum {
-    pub fn from(opcode: &u8) -> Option<PacketEnum> {
+impl PacketTypeEnum {
+    pub fn from(opcode: &u8) -> Option<PacketTypeEnum> {
         match opcode {
-            0x02 => Some(PacketEnum::RequestServerLogin),
-            0x00 => Some(PacketEnum::RequestAuthLogin),
-            0x07 => Some(PacketEnum::AuthGameGuard),
-            0x05 => Some(PacketEnum::ServerList),
+            0x02 => Some(PacketTypeEnum::RequestServerLogin),
+            0x00 => Some(PacketTypeEnum::RequestAuthLogin),
+            0x07 => Some(PacketTypeEnum::AuthGameGuard),
+            0x05 => Some(PacketTypeEnum::ServerList),
             _ => None,
         }
     }
 
-    pub fn from_packet(packet: &Vec<u8>) -> Option<PacketEnum> {
+    pub fn from_packet(packet: &Vec<u8>) -> Option<PacketTypeEnum> {
         return match packet.get(0) {
-            Some(opcode) => PacketEnum::from(opcode),
+            Some(opcode) => PacketTypeEnum::from(opcode),
             None => None,
         };
     }
