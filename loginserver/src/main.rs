@@ -5,7 +5,6 @@ use shared::structs::session::Session;
 use shared::tokio;
 use shared::tokio::net::{TcpListener, TcpStream};
 use std::error::Error;
-use std::io::ErrorKind;
 use std::net::Ipv4Addr;
 
 use crate::packet::client::{
@@ -23,17 +22,17 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let login_server = TcpListener::bind("127.0.0.1:2106").await?;
 
     loop {
-        let result = login_server.accept().await;
-        if let Ok(result) = result {
-            let (stream, addr) = result;
-            stream.set_nodelay(true).unwrap();
-            println!(
-                "Login server connection established from {:?}:{:?}",
-                addr.ip().to_string(),
-                addr.port().to_string()
-            );
-            tokio::spawn(async move { handle_stream(stream).await });
-        }
+        let (stream, addr) = match login_server.accept().await {
+            Err(e) => {
+                println!("Connection could not be established: {:?}", e);
+                continue;
+            }
+            Ok((stream, addr)) => (stream, addr),
+        };
+
+        println!("Connection established from {:?}", addr);
+        stream.set_nodelay(true).unwrap();
+        tokio::spawn(async move { handle_stream(stream).await });
     }
 }
 
@@ -43,32 +42,25 @@ async fn handle_stream(mut stream: TcpStream) {
     send_packet(&mut stream, Box::new(InitPacket::new(&session))).await;
 
     loop {
-        let result = decrypt_packet(&mut stream, &blowfish).await;
-        if let Err(e) = result {
-            match e.kind() {
-                ErrorKind::WouldBlock => {
-                    println!("Login server blocking operation");
-                }
-                _ => {
-                    println!("Login server connection error: {:?}", e.kind().to_string());
-                }
+        let decrypted_packet = match decrypt_packet(&mut stream, &blowfish).await {
+            Err(e) => {
+                println!("Login server connection error: {:?}", e);
+                return;
             }
+            Ok(packet) => packet,
+        };
 
-            return;
-        }
+        let packet_type = match PacketTypeEnum::from_packet(&decrypted_packet) {
+            None => {
+                println!(
+                    "Unknown packet received: {:02x?}",
+                    decrypted_packet.get(0).unwrap()
+                );
+                continue;
+            }
+            Some(packet_type) => packet_type,
+        };
 
-        let decrypted_packet = result.unwrap();
-        let result = PacketTypeEnum::from_packet(&decrypted_packet);
-        if let None = result {
-            println!(
-                "Unknown packet received: {:02x?}",
-                decrypted_packet.get(0).unwrap()
-            );
-
-            continue;
-        }
-
-        let packet_type = result.unwrap();
         let matched_packet: Box<dyn ServerPacketOutput + Send> = match packet_type {
             PacketTypeEnum::RequestAuthLogin => Box::new(LoginOkPacket::new(&blowfish)),
             PacketTypeEnum::AuthGameGuard => {
