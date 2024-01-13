@@ -1,8 +1,9 @@
-use crate::packet::client::FromDecryptedPacket;
 use shared::rand::thread_rng;
-use shared::rsa::internals::decrypt;
 use shared::rsa::BigUint;
+use shared::rsa::internals::decrypt;
 use shared::structs::session::Session;
+
+use crate::packet::client::FromDecryptedPacket;
 
 #[derive(Debug)]
 pub struct RequestAuthLoginPacket {
