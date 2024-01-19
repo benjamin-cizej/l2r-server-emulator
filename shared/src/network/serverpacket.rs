@@ -1,9 +1,11 @@
-use crate::crypto::Xor;
+use std::io::{Read, Write};
+
 use bytes::Buf;
 use crypto::blowfish::Blowfish;
 use crypto::symmetriccipher::BlockEncryptor;
 use num::ToPrimitive;
-use std::io::{Read, Write};
+
+use crate::crypto::Xor;
 
 pub struct ServerPacket {
     buffer: Vec<u8>,
@@ -135,6 +137,8 @@ pub fn swap32(block: &[u8]) -> [u8; 8] {
     output
 }
 
-pub trait ServerPacketOutput {
+pub type ServerPacketOutput = Box<dyn ServerPacketOutputtable + Send>;
+
+pub trait ServerPacketOutputtable {
     fn to_output_stream(&self) -> Vec<u8>;
 }

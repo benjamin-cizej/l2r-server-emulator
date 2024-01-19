@@ -7,6 +7,6 @@ pub use server_list::ServerListPacket;
 mod gg_auth;
 mod init;
 mod login_ok;
+pub mod login_fail;
 mod play_ok;
 mod server_list;
-

@@ -1,5 +1,5 @@
 use shared::extcrypto::blowfish::Blowfish;
-use shared::network::serverpacket::{ServerPacket, ServerPacketOutput};
+use shared::network::serverpacket::{ServerPacket, ServerPacketOutputtable};
 
 pub struct PlayOkPacket {
     pub play_ok1: i32,
@@ -17,7 +17,7 @@ impl PlayOkPacket {
     }
 }
 
-impl ServerPacketOutput for PlayOkPacket {
+impl ServerPacketOutputtable for PlayOkPacket {
     fn to_output_stream(&self) -> Vec<u8> {
         let mut packet = ServerPacket::new();
         packet.write_uint8(0x07);

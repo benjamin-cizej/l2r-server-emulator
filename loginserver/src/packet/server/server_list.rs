@@ -1,5 +1,5 @@
 use shared::extcrypto::blowfish::Blowfish;
-use shared::network::serverpacket::{ServerPacket, ServerPacketOutput};
+use shared::network::serverpacket::{ServerPacket, ServerPacketOutputtable};
 use shared::structs::server::Server;
 
 pub struct ServerListPacket {
@@ -16,7 +16,7 @@ impl ServerListPacket {
     }
 }
 
-impl ServerPacketOutput for ServerListPacket {
+impl ServerPacketOutputtable for ServerListPacket {
     fn to_output_stream(&self) -> Vec<u8> {
         let mut packet = ServerPacket::new();
         packet.write_uint8(0x04);

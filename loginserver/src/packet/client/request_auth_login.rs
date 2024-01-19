@@ -1,6 +1,10 @@
+use std::io;
+use std::io::Error;
+use std::io::ErrorKind::InvalidData;
+
 use shared::rand::thread_rng;
-use shared::rsa::BigUint;
 use shared::rsa::internals::decrypt;
+use shared::rsa::BigUint;
 use shared::structs::session::Session;
 
 use crate::packet::client::FromDecryptedPacket;
@@ -25,20 +29,30 @@ impl RequestAuthLoginPacket {
         self.session_id
     }
 
-    pub fn decrypt_credentials(packet: &Vec<u8>, session: &Session) {
-        if let Some(credentials) = packet.get(1..129) {
-            let credentials = BigUint::from_bytes_be(credentials);
-            match decrypt(Some(&mut thread_rng()), &session.rsa_key, &credentials) {
-                Ok(result) => {
-                    let mut replacement = vec![0u8; 91];
-                    replacement.append(&mut result.to_bytes_be());
-                    packet.clone().splice(1..129, replacement);
-                }
-                Err(e) => {
-                    println!("ERROR DECRYPTING {:?}", e);
-                }
-            };
-        }
+    pub fn decrypt_credentials(packet: &mut Vec<u8>, session: &Session) -> io::Result<()> {
+        let credentials = match packet.get(1..129) {
+            Some(credentials) => credentials,
+            None => {
+                return Err(Error::new(
+                    InvalidData,
+                    "Could not read credentials from packet",
+                ))
+            }
+        };
+
+        let credentials = BigUint::from_bytes_be(credentials);
+        return match decrypt(Some(&mut thread_rng()), &session.rsa_key, &credentials) {
+            Ok(result) => {
+                let mut replacement = vec![0u8; 91];
+                replacement.append(&mut result.to_bytes_be());
+                packet.splice(1..129, replacement);
+                Ok(())
+            }
+            Err(e) => Err(Error::new(
+                InvalidData,
+                format!("Error decryptyng credentials: {}", e.to_string()),
+            )),
+        };
     }
 }
 

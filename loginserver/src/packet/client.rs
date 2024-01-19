@@ -3,6 +3,7 @@ use std::io::ErrorKind::Unsupported;
 use std::net::Ipv4Addr;
 
 pub use auth_gameguard::AuthGameGuardPacket;
+pub use request_auth_login::RequestAuthLoginPacket;
 use shared::extcrypto::blowfish::Blowfish;
 use shared::extcrypto::symmetriccipher::BlockDecryptor;
 use shared::network::{read_packet, send_packet};
@@ -70,7 +71,7 @@ pub async fn handle_packet(mut stream: &mut TcpStream, blowfish: &Blowfish) -> R
         Some(packet_type) => packet_type,
     };
 
-    let matched_packet: Box<dyn ServerPacketOutput + Send> = match packet_type {
+    let matched_packet: ServerPacketOutput = match packet_type {
         PacketTypeEnum::RequestAuthLogin => Box::new(LoginOkPacket::new(&blowfish)),
         PacketTypeEnum::AuthGameGuard => {
             let packet = AuthGameGuardPacket::from_decrypted_packet(decrypted_packet);

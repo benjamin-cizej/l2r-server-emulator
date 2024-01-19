@@ -1,6 +1,6 @@
 use shared::crypto::Scramble;
 use shared::extcrypto::blowfish::Blowfish;
-use shared::network::serverpacket::{ServerPacket, ServerPacketOutput};
+use shared::network::serverpacket::{ServerPacket, ServerPacketOutputtable};
 use shared::structs::session::Session;
 
 pub struct InitPacket {
@@ -21,7 +21,7 @@ impl InitPacket {
     }
 }
 
-impl ServerPacketOutput for InitPacket {
+impl ServerPacketOutputtable for InitPacket {
     fn to_output_stream(&self) -> Vec<u8> {
         let blowfish = Blowfish::new(&[
             0x6b, 0x60, 0xcb, 0x5b, 0x82, 0xce, 0x90, 0xb1, 0xcc, 0x2b, 0x6c, 0x55, 0x6c, 0x6c,
