@@ -1,12 +1,8 @@
+use loginserver::login_server::start_server;
 use std::error::Error;
 
 use shared::tokio;
 use shared::tokio::net::TcpListener;
-
-use crate::login_server::start_server;
-
-mod login_server;
-mod packet;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
