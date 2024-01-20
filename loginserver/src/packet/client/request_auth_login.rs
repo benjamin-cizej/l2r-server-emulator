@@ -9,7 +9,6 @@ use shared::structs::session::Session;
 
 use crate::packet::client::FromDecryptedPacket;
 
-#[derive(Debug)]
 pub struct RequestAuthLoginPacket {
     username: String,
     password: String,

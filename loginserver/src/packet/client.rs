@@ -1,17 +1,16 @@
-use std::io::{Error, Result};
 use std::io::ErrorKind::Unsupported;
+use std::io::{Error, Result};
 use std::net::Ipv4Addr;
 
+use crate::packet::server::{GGAuthPacket, LoginOkPacket, PlayOkPacket, ServerListPacket};
 pub use auth_gameguard::AuthGameGuardPacket;
 pub use request_auth_login::RequestAuthLoginPacket;
 use shared::extcrypto::blowfish::Blowfish;
 use shared::extcrypto::symmetriccipher::BlockDecryptor;
+use shared::network::serverpacket::{swap32, ServerPacketOutput};
+use shared::network::stream::Streamable;
 use shared::network::{read_packet, send_packet};
-use shared::network::serverpacket::{ServerPacketOutput, swap32};
 use shared::structs::server::Server;
-use shared::tokio::net::TcpStream;
-
-use crate::packet::server::{GGAuthPacket, LoginOkPacket, PlayOkPacket, ServerListPacket};
 
 mod auth_gameguard;
 mod request_auth_login;
@@ -58,8 +57,8 @@ pub fn decrypt_packet(packet: Vec<u8>, blowfish: &Blowfish) -> Vec<u8> {
     decrypted_stream
 }
 
-pub async fn handle_packet(mut stream: &mut TcpStream, blowfish: &Blowfish) -> Result<()> {
-    let packet = read_packet(&mut stream).await?;
+pub async fn handle_packet(stream: &mut impl Streamable, blowfish: &Blowfish) -> Result<()> {
+    let packet = read_packet(stream).await?;
     let decrypted_packet = decrypt_packet(packet, &blowfish);
     let packet_type = match PacketTypeEnum::from_packet(&decrypted_packet) {
         None => {
@@ -101,7 +100,7 @@ pub async fn handle_packet(mut stream: &mut TcpStream, blowfish: &Blowfish) -> R
         PacketTypeEnum::RequestServerLogin => Box::new(PlayOkPacket::new(&blowfish)),
     };
 
-    send_packet(&mut stream, matched_packet).await?;
+    send_packet(stream, matched_packet).await?;
 
     Ok(())
 }

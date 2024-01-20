@@ -5,11 +5,12 @@ use std::net::SocketAddr;
 use std::sync::Arc;
 
 use shared::extcrypto::blowfish::Blowfish;
+use shared::network::listener::Acceptable;
 use shared::network::serverpacket::ServerPacketOutput;
+use shared::network::stream::Streamable;
 use shared::network::{read_packet, send_packet};
 use shared::structs::session::Session;
 use shared::tokio;
-use shared::tokio::net::{TcpListener, TcpStream};
 use shared::tokio::select;
 use shared::tokio::sync::broadcast::Sender;
 use shared::tokio::sync::{broadcast, Mutex};
@@ -26,15 +27,14 @@ pub enum MessageAction {
     Disconnect,
 }
 
-pub async fn start_server() -> Result<(), Box<dyn Error>> {
-    let login_server = TcpListener::bind("127.0.0.1:2106").await?;
+pub async fn start_server(listener: impl Acceptable) -> Result<(), Box<dyn Error>> {
     let clients = Arc::new(Mutex::new(HashMap::<
         String,
         Sender<(MessageAction, Vec<u8>)>,
     >::new()));
 
     loop {
-        let (stream, addr) = match login_server.accept().await {
+        let (stream, addr) = match listener.accept_connection().await {
             Err(e) => {
                 println!("Connection could not be established: {:?}", e);
                 continue;
@@ -45,7 +45,6 @@ pub async fn start_server() -> Result<(), Box<dyn Error>> {
         let (client_tx, _) = broadcast::channel::<(MessageAction, Vec<u8>)>(10);
 
         println!("Connection established from {:?}", addr);
-        stream.set_nodelay(true).unwrap();
         let cloned_clients = clients.clone();
         tokio::spawn(async move {
             handle_stream(stream, addr, client_tx.clone(), cloned_clients).await
@@ -54,7 +53,7 @@ pub async fn start_server() -> Result<(), Box<dyn Error>> {
 }
 
 async fn handle_stream(
-    mut stream: TcpStream,
+    mut stream: impl Streamable,
     addr: SocketAddr,
     sender: Sender<(MessageAction, Vec<u8>)>,
     clients: Arc<Mutex<HashMap<String, Sender<(MessageAction, Vec<u8>)>>>>,
@@ -138,9 +137,13 @@ async fn handle_stream(
     }
 }
 
-async fn handle_gameguard_auth(stream: &mut TcpStream, blowfish: &Blowfish) -> std::io::Result<()> {
+async fn handle_gameguard_auth(
+    stream: &mut impl Streamable,
+    blowfish: &Blowfish,
+) -> std::io::Result<()> {
     let packet = read_packet(stream).await?;
     let decrypted_packet = decrypt_packet(packet, &blowfish);
+    println!("decrypted");
     let packet: ServerPacketOutput = match PacketTypeEnum::from_packet(&decrypted_packet) {
         None => {
             return Err(std::io::Error::new(
@@ -170,7 +173,7 @@ async fn handle_gameguard_auth(stream: &mut TcpStream, blowfish: &Blowfish) -> s
 }
 
 async fn handle_login_credentials(
-    stream: &mut TcpStream,
+    stream: &mut impl Streamable,
     blowfish: &Blowfish,
     session: &Session,
     accounts: &Arc<Mutex<HashMap<String, Sender<(MessageAction, Vec<u8>)>>>>,
