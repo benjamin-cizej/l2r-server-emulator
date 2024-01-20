@@ -1,3 +1,4 @@
+use crate::network::channel::channel_connection::ChannelConnector;
 use crate::network::channel::channel_stream::ChannelStream;
 use crate::network::listener::Acceptable;
 use std::future::Future;
@@ -8,7 +9,7 @@ use std::pin::Pin;
 use tokio::sync::mpsc::{channel, Receiver, Sender};
 
 pub struct ChannelListener {
-    tx: Sender<(Sender<Vec<u8>>, Sender<Sender<Vec<u8>>>)>,
+    tx: ChannelConnector,
     rx: Receiver<(Sender<Vec<u8>>, Sender<Sender<Vec<u8>>>)>,
 }
 
@@ -19,7 +20,7 @@ impl ChannelListener {
         Self { tx, rx }
     }
 
-    pub fn get_sender(&self) -> Sender<(Sender<Vec<u8>>, Sender<Sender<Vec<u8>>>)> {
+    pub fn get_connector(&self) -> ChannelConnector {
         self.tx.clone()
     }
 }
