@@ -10,8 +10,8 @@ mod packet;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
-    let login_server = TcpListener::bind("127.0.0.1:2106").await?;
-    start_server(login_server).await?;
+    let listener = TcpListener::bind("127.0.0.1:2106").await?;
+    start_server(listener).await?;
 
     Ok(())
 }
