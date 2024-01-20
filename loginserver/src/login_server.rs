@@ -27,7 +27,7 @@ pub enum MessageAction {
     Disconnect,
 }
 
-pub async fn start_server(listener: impl Acceptable) -> Result<(), Box<dyn Error>> {
+pub async fn start_server(mut listener: impl Acceptable) -> Result<(), Box<dyn Error>> {
     let clients = Arc::new(Mutex::new(HashMap::<
         String,
         Sender<(MessageAction, Vec<u8>)>,

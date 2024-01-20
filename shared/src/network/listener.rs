@@ -7,7 +7,7 @@ pub trait Acceptable {
     type Output: Streamable + Send + 'static;
 
     fn accept_connection<'a>(
-        &'a self,
+        &'a mut self,
     ) -> Pin<
         Box<dyn std::future::Future<Output = io::Result<(Self::Output, SocketAddr)>> + Send + 'a>,
     >;

@@ -6,11 +6,11 @@ use crate::network::serverpacket::ServerPacketOutput;
 use crate::network::stream::Streamable;
 use num::ToPrimitive;
 
+pub mod channel;
 pub mod listener;
 pub mod serverpacket;
 pub mod stream;
-pub mod tokio_tcp_listener;
-pub mod tokio_tcp_stream;
+pub mod tcp;
 
 pub async fn read_packet(stream: &mut impl Streamable) -> Result<Vec<u8>> {
     let mut len = [0u8; 2];
