@@ -1,7 +1,6 @@
 use crate::crypto::dec_xor_pass;
-use loginserver::packet::client::FromDecryptedPacket;
+use loginserver::packet::client::{decrypt_packet, FromDecryptedPacket};
 use loginserver::packet::server::InitPacket;
-use shared::crypto::decrypt_packet;
 use shared::extcrypto::blowfish::Blowfish;
 use shared::network::channel::channel_connection::{connect, ChannelConnector};
 use shared::network::channel::channel_stream::ChannelStream;
@@ -14,7 +13,7 @@ where
     T: Streamable,
 {
     pub connection: T,
-    packet: Vec<u8>,
+    bytes: Vec<u8>,
 }
 
 impl<T> Client<T>
@@ -26,7 +25,7 @@ where
 
         Client {
             connection: stream,
-            packet: vec![],
+            bytes: vec![],
         }
     }
 
@@ -35,12 +34,12 @@ where
 
         Client {
             connection: stream,
-            packet: vec![],
+            bytes: vec![],
         }
     }
 
-    pub fn get_last_packet_received(&self) -> &Vec<u8> {
-        &self.packet
+    pub fn get_last_bytes_received(&self) -> &Vec<u8> {
+        &self.bytes
     }
 
     pub async fn read_init_packet(&mut self) -> InitPacket {
@@ -58,7 +57,7 @@ where
         let key = u32::from_le_bytes(key.try_into().unwrap());
         dec_xor_pass(&mut packet, 0, packet_len, key).unwrap();
 
-        self.packet = packet.to_vec();
+        self.bytes = packet.to_vec();
 
         InitPacket::from_decrypted_packet(packet)
     }
