@@ -4,5 +4,6 @@ members = [
     "client",
     "loginserver",
     "gameserver",
-    "shared"
+    "shared",
+    "tests"
 ]

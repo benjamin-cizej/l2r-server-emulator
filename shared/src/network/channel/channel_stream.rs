@@ -13,7 +13,7 @@ pub struct ChannelStream {
 }
 
 impl ChannelStream {
-    pub fn build(tx: Sender<Vec<u8>>, rx: Receiver<Vec<u8>>) -> Self {
+    pub fn new(tx: Sender<Vec<u8>>, rx: Receiver<Vec<u8>>) -> Self {
         ChannelStream {
             tx,
             rx,

@@ -1,3 +1,6 @@
+use crate::network::serverpacket::swap32;
+use extcrypto::blowfish::Blowfish;
+use extcrypto::symmetriccipher::BlockDecryptor;
 use num::ToPrimitive;
 use rsa::{PublicKeyParts, RsaPrivateKey};
 
@@ -95,4 +98,16 @@ impl Scramble for RsaPrivateKey {
 
         scrambled
     }
+}
+
+pub fn decrypt_packet(packet: Vec<u8>, blowfish: &Blowfish) -> Vec<u8> {
+    let mut decrypted_stream: Vec<u8> = vec![];
+    for i in packet.chunks(8) {
+        let mut dec_buffer = [0u8; 8];
+        let mut input = swap32(i);
+        blowfish.decrypt_block(&mut input, &mut dec_buffer);
+        decrypted_stream.append(&mut Vec::from(swap32(&mut dec_buffer)));
+    }
+
+    decrypted_stream
 }

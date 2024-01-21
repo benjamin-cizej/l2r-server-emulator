@@ -19,7 +19,7 @@ pub async fn read_packet(stream: &mut impl Streamable) -> Result<Vec<u8>> {
         return Err(io::Error::from(ConnectionAborted));
     }
 
-    let mut data = vec![0; u16::from_le_bytes(len).to_usize().unwrap()];
+    let mut data = vec![0; u16::from_le_bytes(len).to_usize().unwrap() - 2];
     stream.receive_bytes(&mut data).await?;
 
     Ok(data)

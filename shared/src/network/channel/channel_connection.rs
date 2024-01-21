@@ -18,7 +18,7 @@ pub async fn connect(connector: &mut ChannelConnector) -> Result<ChannelStream> 
         None => return Err(Error::from(ConnectionRefused)),
     };
 
-    let stream = ChannelStream::build(remote_writer, byte_reader);
+    let stream = ChannelStream::new(remote_writer, byte_reader);
 
     Ok(stream)
 }

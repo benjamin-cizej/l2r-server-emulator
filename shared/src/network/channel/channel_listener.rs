@@ -38,7 +38,7 @@ impl Acceptable for ChannelListener {
             };
 
             let (tx, byte_reader) = channel(10);
-            let stream = ChannelStream::build(byte_writer, byte_reader);
+            let stream = ChannelStream::new(byte_writer, byte_reader);
 
             if let Err(_) = sender.send(tx).await {
                 return Err(io::Error::from(ConnectionRefused));

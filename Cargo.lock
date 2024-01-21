@@ -87,6 +87,7 @@ checksum = "baf1de4339761588bc0619e3cbc0120ee582ebb74b53b4efbf79117bd2da40fd"
 name = "client"
 version = "0.1.0"
 dependencies = [
+ "loginserver",
  "shared",
 ]
 
@@ -214,7 +215,6 @@ dependencies = [
 name = "loginserver"
 version = "0.1.0"
 dependencies = [
- "client",
  "shared",
 ]
 
@@ -657,6 +657,15 @@ dependencies = [
  "proc-macro2",
  "quote",
  "unicode-ident",
+]
+
+[[package]]
+name = "tests"
+version = "0.1.0"
+dependencies = [
+ "client",
+ "loginserver",
+ "shared",
 ]
 
 [[package]]
