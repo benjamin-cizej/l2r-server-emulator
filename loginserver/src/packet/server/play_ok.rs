@@ -1,5 +1,5 @@
 use shared::extcrypto::blowfish::Blowfish;
-use shared::network::serverpacket::{ServerPacket, ServerPacketOutputtable};
+use shared::network::packet::sendable_packet::{SendablePacket, SendablePacketBytes};
 
 pub struct PlayOkPacket {
     pub play_ok1: i32,
@@ -17,9 +17,9 @@ impl PlayOkPacket {
     }
 }
 
-impl ServerPacketOutputtable for PlayOkPacket {
-    fn to_output_stream(&self) -> Vec<u8> {
-        let mut packet = ServerPacket::new();
+impl SendablePacketBytes for PlayOkPacket {
+    fn to_bytes(&self) -> Vec<u8> {
+        let mut packet = SendablePacket::new();
         packet.write_uint8(0x07);
         packet.write_int32(self.play_ok1);
         packet.write_int32(self.play_ok2);
@@ -27,6 +27,6 @@ impl ServerPacketOutputtable for PlayOkPacket {
         packet.add_checksum();
         packet.blowfish_encrypt(self.blowfish);
 
-        packet.prep_output()
+        packet.to_bytes()
     }
 }

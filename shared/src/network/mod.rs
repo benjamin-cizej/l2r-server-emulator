@@ -2,13 +2,13 @@ use std::io;
 use std::io::ErrorKind::ConnectionAborted;
 use std::io::Result;
 
-use crate::network::serverpacket::ServerPacketOutput;
+use crate::network::packet::sendable_packet::SendablePacketOutput;
 use crate::network::stream::Streamable;
 use num::ToPrimitive;
 
 pub mod channel;
 pub mod listener;
-pub mod serverpacket;
+pub mod packet;
 pub mod stream;
 pub mod tcp;
 
@@ -25,10 +25,8 @@ pub async fn read_packet(stream: &mut impl Streamable) -> Result<Vec<u8>> {
     Ok(data)
 }
 
-pub async fn send_packet(stream: &mut impl Streamable, packet: ServerPacketOutput) -> Result<()> {
-    stream
-        .send_bytes(packet.to_output_stream().as_slice())
-        .await?;
+pub async fn send_packet(stream: &mut impl Streamable, packet: SendablePacketOutput) -> Result<()> {
+    stream.send_bytes(packet.to_bytes().as_slice()).await?;
 
     Ok(())
 }

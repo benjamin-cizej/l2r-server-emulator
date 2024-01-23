@@ -6,7 +6,7 @@ use std::sync::Arc;
 
 use shared::extcrypto::blowfish::Blowfish;
 use shared::network::listener::Acceptable;
-use shared::network::serverpacket::ServerPacketOutput;
+use shared::network::packet::sendable_packet::SendablePacketOutput;
 use shared::network::stream::Streamable;
 use shared::network::{read_packet, send_packet};
 use shared::structs::session::Session;
@@ -144,7 +144,7 @@ async fn handle_gameguard_auth(
     let packet = read_packet(stream).await?;
     let decrypted_packet = decrypt_packet(packet, &blowfish);
     println!("decrypted");
-    let packet: ServerPacketOutput = match PacketTypeEnum::from_packet(&decrypted_packet) {
+    let packet: SendablePacketOutput = match PacketTypeEnum::from_packet(&decrypted_packet) {
         None => {
             return Err(std::io::Error::new(
                 Unsupported,
@@ -181,7 +181,7 @@ async fn handle_login_credentials(
     let packet = read_packet(stream).await?;
     let mut decrypted_packet = decrypt_packet(packet, &blowfish);
     let account: String;
-    let packet: ServerPacketOutput = match PacketTypeEnum::from_packet(&decrypted_packet) {
+    let packet: SendablePacketOutput = match PacketTypeEnum::from_packet(&decrypted_packet) {
         None => {
             return Err(std::io::Error::new(
                 Unsupported,
@@ -194,12 +194,12 @@ async fn handle_login_credentials(
             account = packet.get_username();
             println!("dec acc {}", account);
             if let Some(sender) = accounts.lock().await.get(&account) {
-                let packet: ServerPacketOutput = Box::new(LoginFailPacket::new(
+                let packet: SendablePacketOutput = Box::new(LoginFailPacket::new(
                     LoginFailReason::AccountInUse,
                     &blowfish,
                 ));
                 sender
-                    .send((MessageAction::Disconnect, packet.to_output_stream()))
+                    .send((MessageAction::Disconnect, packet.to_bytes()))
                     .unwrap();
                 return Err(std::io::Error::from(AlreadyExists));
             }

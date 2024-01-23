@@ -1,5 +1,5 @@
 use shared::extcrypto::blowfish::Blowfish;
-use shared::network::serverpacket::{ServerPacket, ServerPacketOutputtable};
+use shared::network::packet::sendable_packet::{SendablePacket, SendablePacketBytes};
 
 pub enum LoginFailReason {
     AccountInUse,
@@ -27,15 +27,15 @@ impl LoginFailPacket {
     }
 }
 
-impl ServerPacketOutputtable for LoginFailPacket {
-    fn to_output_stream(&self) -> Vec<u8> {
-        let mut packet = ServerPacket::new();
+impl SendablePacketBytes for LoginFailPacket {
+    fn to_bytes(&self) -> Vec<u8> {
+        let mut packet = SendablePacket::new();
         packet.write_uint8(0x01);
         packet.write_uint8(self.reason.get_opcode());
         packet.pad_bits();
         packet.add_checksum();
         packet.blowfish_encrypt(self.blowfish);
 
-        packet.prep_output()
+        packet.to_bytes()
     }
 }

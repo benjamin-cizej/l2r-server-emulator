@@ -1,5 +1,5 @@
 use shared::extcrypto::blowfish::Blowfish;
-use shared::network::serverpacket::{ServerPacket, ServerPacketOutputtable};
+use shared::network::packet::sendable_packet::{SendablePacket, SendablePacketBytes};
 
 pub struct LoginOkPacket {
     pub login_ok1: i32,
@@ -17,9 +17,9 @@ impl LoginOkPacket {
     }
 }
 
-impl ServerPacketOutputtable for LoginOkPacket {
-    fn to_output_stream(&self) -> Vec<u8> {
-        let mut packet = ServerPacket::new();
+impl SendablePacketBytes for LoginOkPacket {
+    fn to_bytes(&self) -> Vec<u8> {
+        let mut packet = SendablePacket::new();
         packet.write_uint8(0x03);
         packet.write_int32(self.login_ok1);
         packet.write_int32(self.login_ok2);
@@ -27,6 +27,6 @@ impl ServerPacketOutputtable for LoginOkPacket {
         packet.add_checksum();
         packet.blowfish_encrypt(self.blowfish);
 
-        packet.prep_output()
+        packet.to_bytes()
     }
 }

@@ -1,19 +1,18 @@
+use crate::crypto::Xor;
+use crate::network::packet::swap32;
+use bytes::Buf;
+use extcrypto::blowfish::Blowfish;
+use extcrypto::symmetriccipher::BlockEncryptor;
+use num::ToPrimitive;
 use std::io::{Read, Write};
 
-use bytes::Buf;
-use crypto::blowfish::Blowfish;
-use crypto::symmetriccipher::BlockEncryptor;
-use num::ToPrimitive;
-
-use crate::crypto::Xor;
-
-pub struct ServerPacket {
+pub struct SendablePacket {
     buffer: Vec<u8>,
 }
 
-impl ServerPacket {
-    pub fn new() -> ServerPacket {
-        ServerPacket { buffer: vec![] }
+impl SendablePacket {
+    pub fn new() -> SendablePacket {
+        SendablePacket { buffer: vec![] }
     }
 
     pub fn write_uint8(&mut self, number: u8) {
@@ -123,7 +122,7 @@ impl ServerPacket {
         self.buffer = xor.encrypt(self.buffer.clone());
     }
 
-    pub fn prep_output(&mut self) -> Vec<u8> {
+    pub fn to_bytes(self) -> Vec<u8> {
         let length = (self.len() + 2).to_u16().unwrap().to_le_bytes();
         let output = Vec::from([&length, self.buffer.as_slice()].concat());
 
@@ -131,25 +130,8 @@ impl ServerPacket {
     }
 }
 
-pub fn swap32(block: &[u8]) -> [u8; 8] {
-    let mut output = [0u8; 8];
-    let mut iteration = 1;
-    for i in block.chunks(4) {
-        let mut counter = iteration * 4;
+pub type SendablePacketOutput = Box<dyn SendablePacketBytes + Send>;
 
-        for j in i {
-            output[counter - 1] = j.clone();
-            counter -= 1;
-        }
-
-        iteration += 1;
-    }
-
-    output
-}
-
-pub type ServerPacketOutput = Box<dyn ServerPacketOutputtable + Send>;
-
-pub trait ServerPacketOutputtable {
-    fn to_output_stream(&self) -> Vec<u8>;
+pub trait SendablePacketBytes {
+    fn to_bytes(&self) -> Vec<u8>;
 }

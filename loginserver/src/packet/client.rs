@@ -7,7 +7,8 @@ pub use auth_gameguard::AuthGameGuardPacket;
 pub use request_auth_login::RequestAuthLoginPacket;
 use shared::extcrypto::blowfish::Blowfish;
 use shared::extcrypto::symmetriccipher::BlockDecryptor;
-use shared::network::serverpacket::{swap32, ServerPacketOutput};
+use shared::network::packet::sendable_packet::SendablePacketOutput;
+use shared::network::packet::swap32;
 use shared::network::stream::Streamable;
 use shared::network::{read_packet, send_packet};
 use shared::structs::server::Server;
@@ -70,7 +71,7 @@ pub async fn handle_packet(stream: &mut impl Streamable, blowfish: &Blowfish) ->
         Some(packet_type) => packet_type,
     };
 
-    let matched_packet: ServerPacketOutput = match packet_type {
+    let matched_packet: SendablePacketOutput = match packet_type {
         PacketTypeEnum::RequestAuthLogin => Box::new(LoginOkPacket::new(&blowfish)),
         PacketTypeEnum::AuthGameGuard => {
             let packet = AuthGameGuardPacket::from_decrypted_packet(decrypted_packet);

@@ -1,5 +1,5 @@
 use shared::extcrypto::blowfish::Blowfish;
-use shared::network::serverpacket::{ServerPacket, ServerPacketOutputtable};
+use shared::network::packet::sendable_packet::{SendablePacket, SendablePacketBytes};
 
 pub struct GGAuthPacket {
     pub session_id: u32,
@@ -15,9 +15,9 @@ impl GGAuthPacket {
     }
 }
 
-impl ServerPacketOutputtable for GGAuthPacket {
-    fn to_output_stream(&self) -> Vec<u8> {
-        let mut packet = ServerPacket::new();
+impl SendablePacketBytes for GGAuthPacket {
+    fn to_bytes(&self) -> Vec<u8> {
+        let mut packet = SendablePacket::new();
         packet.write_uint8(0x0b);
         packet.write_int32(self.session_id as i32);
         packet.write_int32(0);
@@ -28,6 +28,6 @@ impl ServerPacketOutputtable for GGAuthPacket {
         packet.add_checksum();
         packet.blowfish_encrypt(self.blowfish);
 
-        packet.prep_output()
+        packet.to_bytes()
     }
 }
