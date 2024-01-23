@@ -1,4 +1,4 @@
-use crate::crypto::Xor;
+use crate::crypto::xor::Xor;
 use crate::network::packet::swap32;
 use bytes::Buf;
 use extcrypto::blowfish::Blowfish;

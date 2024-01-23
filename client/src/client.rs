@@ -1,6 +1,7 @@
 use crate::crypto::dec_xor_pass;
 use loginserver::packet::client::{decrypt_packet, FromDecryptedPacket};
 use loginserver::packet::server::InitPacket;
+use shared::crypto::blowfish::StaticL2Blowfish;
 use shared::extcrypto::blowfish::Blowfish;
 use shared::network::channel::channel_connection::{connect, ChannelConnector};
 use shared::network::channel::channel_stream::ChannelStream;
@@ -43,11 +44,7 @@ where
     }
 
     pub async fn read_init_packet(&mut self) -> InitPacket {
-        let blowfish = Blowfish::new(&[
-            0x6b, 0x60, 0xcb, 0x5b, 0x82, 0xce, 0x90, 0xb1, 0xcc, 0x2b, 0x6c, 0x55, 0x6c, 0x6c,
-            0x6c, 0x6c,
-        ]);
-
+        let blowfish = Blowfish::new_l2_static();
         let packet = read_packet(&mut self.connection).await.unwrap();
         let mut packet = decrypt_packet(packet, &blowfish);
         let packet_len = packet.len();

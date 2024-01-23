@@ -1,3 +1,4 @@
+use shared::crypto::blowfish::StaticL2Blowfish;
 use crate::packet::client::FromDecryptedPacket;
 use shared::extcrypto::blowfish::Blowfish;
 use shared::network::packet::sendable_packet::{SendablePacket, SendablePacketBytes};
@@ -41,10 +42,7 @@ impl InitPacket {
 
 impl SendablePacketBytes for InitPacket {
     fn to_bytes(&self) -> Vec<u8> {
-        let blowfish = Blowfish::new(&[
-            0x6b, 0x60, 0xcb, 0x5b, 0x82, 0xce, 0x90, 0xb1, 0xcc, 0x2b, 0x6c, 0x55, 0x6c, 0x6c,
-            0x6c, 0x6c,
-        ]);
+        let blowfish = Blowfish::new_l2_static();
         let mut packet = SendablePacket::new();
 
         packet.write_uint8(0x00);
