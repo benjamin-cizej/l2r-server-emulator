@@ -103,9 +103,20 @@ impl ServerPacket {
     }
 
     pub fn add_checksum(&mut self) {
-        let size = 4 + (self.len() + 4) % 8;
-        let checksum = vec![0; size];
-        self.write_bytes(checksum);
+        let size = self.buffer.len();
+
+        let mut checksum: u64 = 0;
+        let mut ecx: u32;
+        let mut i = 0;
+
+        while i < size - 4 {
+            let mut num = [0u8; 4];
+            self.buffer.get(i..i + 3).unwrap().copy_to_slice(&mut num);
+            ecx = u32::from_le_bytes(num);
+            checksum ^= u64::from(ecx);
+            i += 4;
+        }
+        self.write_bytes(checksum.to_le_bytes().to_vec());
     }
 
     pub fn xor_encrypt(&mut self, xor: &mut Xor) {
