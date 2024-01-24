@@ -44,7 +44,7 @@ where
     }
 
     pub async fn read_init_packet(&mut self) -> InitPacket {
-        let blowfish = Blowfish::new_l2_static();
+        let blowfish = Blowfish::new_static();
         let packet = read_packet(&mut self.connection).await.unwrap();
         let mut packet = decrypt_packet(packet, &blowfish);
         let packet_len = packet.len();
@@ -54,8 +54,8 @@ where
         let key = u32::from_le_bytes(key.try_into().unwrap());
         dec_xor_pass(&mut packet, 0, packet_len, key).unwrap();
 
-        self.bytes = packet.to_vec();
+        self.bytes = packet;
 
-        InitPacket::from_decrypted_packet(packet)
+        InitPacket::from_decrypted_packet(self.bytes.clone())
     }
 }

@@ -1,5 +1,5 @@
-use shared::crypto::blowfish::StaticL2Blowfish;
 use crate::packet::client::FromDecryptedPacket;
+use shared::crypto::blowfish::StaticL2Blowfish;
 use shared::extcrypto::blowfish::Blowfish;
 use shared::network::packet::sendable_packet::{SendablePacket, SendablePacketBytes};
 use shared::rsa::{BigUint, PublicKeyParts};
@@ -42,7 +42,7 @@ impl InitPacket {
 
 impl SendablePacketBytes for InitPacket {
     fn to_bytes(&self) -> Vec<u8> {
-        let blowfish = Blowfish::new_l2_static();
+        let blowfish = Blowfish::new_static();
         let mut packet = SendablePacket::new();
 
         packet.write_uint8(0x00);
