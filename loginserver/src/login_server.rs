@@ -1,3 +1,4 @@
+use shared::crypto::blowfish::StaticL2Blowfish;
 use std::collections::HashMap;
 use std::error::Error;
 use std::io::ErrorKind::{AlreadyExists, ConnectionAborted, InvalidData, Unsupported};
@@ -6,7 +7,7 @@ use std::sync::Arc;
 
 use shared::extcrypto::blowfish::Blowfish;
 use shared::network::listener::Acceptable;
-use shared::network::packet::sendable_packet::SendablePacketOutput;
+use shared::network::packet::sendable::SendablePacketOutput;
 use shared::network::stream::Streamable;
 use shared::network::{read_packet, send_packet};
 use shared::structs::session::Session;
@@ -60,7 +61,13 @@ async fn handle_stream(
 ) {
     let session = Session::new();
     let blowfish = Blowfish::new(&session.blowfish_key);
-    if let Err(e) = send_packet(&mut stream, Box::new(InitPacket::new(&session))).await {
+    if let Err(e) = send_packet(
+        &mut stream,
+        Box::new(InitPacket::new(&session)),
+        &Blowfish::new_static(),
+    )
+    .await
+    {
         println!("Error sending initial packet: {:?}", e);
         return;
     }
@@ -120,8 +127,8 @@ async fn handle_stream(
                     Ok((action, _)) => {
                         match action {
                             MessageAction::Disconnect => {
-                                let packet = Box::new(LoginFailPacket::new(LoginFailReason::AccountInUse, &blowfish));
-                                send_packet(&mut stream, packet).await.unwrap();
+                                let packet = Box::new(LoginFailPacket::new(LoginFailReason::AccountInUse));
+                                send_packet(&mut stream, packet, &blowfish).await.unwrap();
                                 println!("Connection terminated.");
                                 {
                                     clients.lock().await.remove(&account);
@@ -143,7 +150,6 @@ async fn handle_gameguard_auth(
 ) -> std::io::Result<()> {
     let packet = read_packet(stream).await?;
     let decrypted_packet = decrypt_packet(packet, &blowfish);
-    println!("decrypted");
     let packet: SendablePacketOutput = match PacketTypeEnum::from_packet(&decrypted_packet) {
         None => {
             return Err(std::io::Error::new(
@@ -154,10 +160,7 @@ async fn handle_gameguard_auth(
         Some(PacketTypeEnum::AuthGameGuard) => {
             let packet = AuthGameGuardPacket::from_decrypted_packet(decrypted_packet);
             let session_id = packet.get_session_id();
-            let mut packet = GGAuthPacket::new(&blowfish);
-            packet.session_id = session_id;
-
-            Box::new(packet)
+            Box::new(GGAuthPacket::new(session_id))
         }
         Some(_) => {
             return Err(std::io::Error::new(
@@ -167,7 +170,7 @@ async fn handle_gameguard_auth(
         }
     };
 
-    send_packet(stream, packet).await?;
+    send_packet(stream, packet, blowfish).await?;
 
     Ok(())
 }
@@ -192,19 +195,16 @@ async fn handle_login_credentials(
             RequestAuthLoginPacket::decrypt_credentials(&mut decrypted_packet, &session)?;
             let packet = RequestAuthLoginPacket::from_decrypted_packet(decrypted_packet);
             account = packet.get_username();
-            println!("dec acc {}", account);
             if let Some(sender) = accounts.lock().await.get(&account) {
-                let packet: SendablePacketOutput = Box::new(LoginFailPacket::new(
-                    LoginFailReason::AccountInUse,
-                    &blowfish,
-                ));
+                let packet: SendablePacketOutput =
+                    Box::new(LoginFailPacket::new(LoginFailReason::AccountInUse));
                 sender
-                    .send((MessageAction::Disconnect, packet.to_bytes()))
+                    .send((MessageAction::Disconnect, packet.to_bytes(blowfish)))
                     .unwrap();
                 return Err(std::io::Error::from(AlreadyExists));
             }
 
-            Box::new(LoginOkPacket::new(&blowfish))
+            Box::new(LoginOkPacket::new(0, 0))
         }
         Some(_) => {
             return Err(std::io::Error::new(
@@ -214,7 +214,7 @@ async fn handle_login_credentials(
         }
     };
 
-    send_packet(stream, packet).await?;
+    send_packet(stream, packet, blowfish).await?;
 
     Ok(account)
 }

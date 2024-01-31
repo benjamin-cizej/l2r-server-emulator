@@ -2,7 +2,7 @@ use rand::{thread_rng, Rng};
 use rsa::{BigUint, RsaPrivateKey};
 
 pub struct Session {
-    pub session_id: u32,
+    pub session_id: i32,
     pub blowfish_key: [u8; 16],
     pub rsa_key: RsaPrivateKey,
 }

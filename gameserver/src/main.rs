@@ -1,5 +1,5 @@
 use shared::crypto::xor::Xor;
-use shared::network::packet::sendable_packet::SendablePacket;
+use shared::network::packet::sendable::SendablePacket;
 use shared::num::ToPrimitive;
 use shared::tokio;
 use shared::tokio::io::{AsyncReadExt, AsyncWriteExt};

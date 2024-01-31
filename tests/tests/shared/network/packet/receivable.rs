@@ -1,8 +1,8 @@
-use client::crypto::dec_xor_pass;
+use shared::network::packet::receivable::ReceivablePacket;
 
 #[test]
-fn it_decodes() {
-    let mut buffer = vec![
+fn it_decyphers_auth() {
+    let bytes = vec![
         0, 0, 0, 0, 0, 107, 145, 2, 4, 186, 95, 2, 4, 78, 228, 47, 6, 156, 76, 238, 127, 142, 2,
         138, 205, 214, 230, 160, 93, 86, 254, 44, 118, 176, 75, 6, 4, 136, 239, 171, 91, 136, 49,
         242, 181, 10, 184, 179, 251, 152, 69, 32, 110, 25, 189, 159, 5, 2, 207, 232, 87, 1, 64, 4,
@@ -14,7 +14,6 @@ fn it_decodes() {
         169, 216, 234, 228, 3, 196, 229, 147, 236, 230, 204, 84, 82, 187, 204, 84, 82, 187, 204,
         84, 82, 187, 204, 84, 82,
     ];
-    let key: u32 = 1381289147;
     let expected = vec![
         0, 0, 0, 0, 4, 33, 198, 0, 0, 124, 4, 233, 250, 197, 87, 242, 237, 233, 77, 152, 202, 220,
         24, 234, 14, 99, 111, 124, 207, 249, 58, 41, 114, 200, 231, 97, 179, 255, 33, 166, 246,
@@ -27,13 +26,14 @@ fn it_decodes() {
         154, 41, 199, 190, 93, 0, 0, 0, 0, 0, 0, 0, 187, 204, 84, 82, 187, 204, 84, 82,
     ];
 
-    dec_xor_pass(&mut buffer, 0, 184, key).unwrap();
-    assert_eq!(buffer, expected);
+    let mut packet = ReceivablePacket::new(bytes);
+    packet.auth_decypher().unwrap();
+    assert_eq!(packet.to_vec(), expected);
 }
 
 #[test]
-fn it_returns_err_on_size_less_than_12() {
-    let mut buffer = vec![0; 5];
-    let key: u32 = 1381289147;
-    dec_xor_pass(&mut buffer, 0, 5, key).unwrap_err();
+fn it_returns_err_on_decypher_auth_with_size_less_than_12() {
+    let bytes = vec![0; 5];
+    let mut packet = ReceivablePacket::new(bytes);
+    packet.auth_decypher().unwrap_err();
 }

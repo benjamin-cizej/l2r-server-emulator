@@ -1,5 +1,5 @@
 use shared::extcrypto::blowfish::Blowfish;
-use shared::network::packet::sendable_packet::{SendablePacket, SendablePacketBytes};
+use shared::network::packet::sendable::{SendablePacket, SendablePacketBytes};
 
 pub enum LoginFailReason {
     AccountInUse,
@@ -15,26 +15,22 @@ impl LoginFailReason {
 
 pub struct LoginFailPacket {
     reason: LoginFailReason,
-    blowfish: Blowfish,
 }
 
 impl LoginFailPacket {
-    pub fn new(reason: LoginFailReason, blowfish: &Blowfish) -> Self {
-        Self {
-            reason,
-            blowfish: blowfish.clone(),
-        }
+    pub fn new(reason: LoginFailReason) -> Self {
+        Self { reason }
     }
 }
 
 impl SendablePacketBytes for LoginFailPacket {
-    fn to_bytes(&self) -> Vec<u8> {
+    fn to_bytes(&self, blowfish: &Blowfish) -> Vec<u8> {
         let mut packet = SendablePacket::new();
         packet.write_uint8(0x01);
         packet.write_uint8(self.reason.get_opcode());
         packet.pad_bits();
         packet.add_checksum();
-        packet.blowfish_encrypt(self.blowfish);
+        packet.blowfish_encrypt(blowfish);
 
         packet.to_bytes()
     }

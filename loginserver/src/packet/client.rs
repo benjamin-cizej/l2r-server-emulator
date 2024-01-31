@@ -7,7 +7,7 @@ pub use auth_gameguard::AuthGameGuardPacket;
 pub use request_auth_login::RequestAuthLoginPacket;
 use shared::extcrypto::blowfish::Blowfish;
 use shared::extcrypto::symmetriccipher::BlockDecryptor;
-use shared::network::packet::sendable_packet::SendablePacketOutput;
+use shared::network::packet::sendable::SendablePacketOutput;
 use shared::network::packet::swap32;
 use shared::network::stream::Streamable;
 use shared::network::{read_packet, send_packet};
@@ -72,17 +72,17 @@ pub async fn handle_packet(stream: &mut impl Streamable, blowfish: &Blowfish) ->
     };
 
     let matched_packet: SendablePacketOutput = match packet_type {
-        PacketTypeEnum::RequestAuthLogin => Box::new(LoginOkPacket::new(&blowfish)),
+        PacketTypeEnum::RequestAuthLogin => Box::new(LoginOkPacket::new(0, 0)),
         PacketTypeEnum::AuthGameGuard => {
             let packet = AuthGameGuardPacket::from_decrypted_packet(decrypted_packet);
             let session_id = packet.get_session_id();
-            let mut packet = GGAuthPacket::new(&blowfish);
+            let mut packet = GGAuthPacket::new(session_id);
             packet.session_id = session_id;
 
             Box::new(packet)
         }
         PacketTypeEnum::ServerList => {
-            let mut packet = ServerListPacket::new(&blowfish);
+            let mut packet = ServerListPacket::new();
             packet.list.push(Server {
                 id: 1,
                 ip: Ipv4Addr::new(127, 0, 0, 1),
@@ -98,10 +98,10 @@ pub async fn handle_packet(stream: &mut impl Streamable, blowfish: &Blowfish) ->
 
             Box::new(packet)
         }
-        PacketTypeEnum::RequestServerLogin => Box::new(PlayOkPacket::new(&blowfish)),
+        PacketTypeEnum::RequestServerLogin => Box::new(PlayOkPacket::new(0, 0)),
     };
 
-    send_packet(stream, matched_packet).await?;
+    send_packet(stream, matched_packet, blowfish).await?;
 
     Ok(())
 }

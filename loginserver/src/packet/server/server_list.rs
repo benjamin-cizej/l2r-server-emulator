@@ -1,23 +1,19 @@
 use shared::extcrypto::blowfish::Blowfish;
-use shared::network::packet::sendable_packet::{SendablePacket, SendablePacketBytes};
+use shared::network::packet::sendable::{SendablePacket, SendablePacketBytes};
 use shared::structs::server::Server;
 
 pub struct ServerListPacket {
     pub list: Vec<Server>,
-    blowfish: Blowfish,
 }
 
 impl ServerListPacket {
-    pub fn new(blowfish: &Blowfish) -> ServerListPacket {
-        ServerListPacket {
-            list: vec![],
-            blowfish: blowfish.clone(),
-        }
+    pub fn new() -> ServerListPacket {
+        ServerListPacket { list: vec![] }
     }
 }
 
 impl SendablePacketBytes for ServerListPacket {
-    fn to_bytes(&self) -> Vec<u8> {
+    fn to_bytes(&self, blowfish: &Blowfish) -> Vec<u8> {
         let mut packet = SendablePacket::new();
         packet.write_uint8(0x04);
         packet.write_uint8(self.list.len() as u8);
@@ -46,7 +42,7 @@ impl SendablePacketBytes for ServerListPacket {
         packet.write_uint16(0);
         packet.pad_bits();
         packet.add_checksum();
-        packet.blowfish_encrypt(self.blowfish);
+        packet.blowfish_encrypt(blowfish);
 
         packet.to_bytes()
     }

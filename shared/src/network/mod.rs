@@ -1,8 +1,9 @@
+use extcrypto::blowfish::Blowfish;
 use std::io;
 use std::io::ErrorKind::ConnectionAborted;
 use std::io::Result;
 
-use crate::network::packet::sendable_packet::SendablePacketOutput;
+use crate::network::packet::sendable::SendablePacketOutput;
 use crate::network::stream::Streamable;
 use num::ToPrimitive;
 
@@ -25,8 +26,14 @@ pub async fn read_packet(stream: &mut impl Streamable) -> Result<Vec<u8>> {
     Ok(data)
 }
 
-pub async fn send_packet(stream: &mut impl Streamable, packet: SendablePacketOutput) -> Result<()> {
-    stream.send_bytes(packet.to_bytes().as_slice()).await?;
+pub async fn send_packet(
+    stream: &mut impl Streamable,
+    packet: SendablePacketOutput,
+    blowfish: &Blowfish,
+) -> Result<()> {
+    stream
+        .send_bytes(packet.to_bytes(blowfish).as_slice())
+        .await?;
 
     Ok(())
 }

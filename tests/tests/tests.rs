@@ -1,2 +1,2 @@
-mod client;
 mod loginserver;
+mod shared;

@@ -1,10 +1,10 @@
 use crate::crypto::xor::Xor;
 use crate::network::packet::swap32;
-use bytes::Buf;
+use bytes::{Buf, Bytes};
 use extcrypto::blowfish::Blowfish;
 use extcrypto::symmetriccipher::BlockEncryptor;
 use num::ToPrimitive;
-use std::io::{Read, Write};
+use std::io::{BufRead, Read};
 
 pub struct SendablePacket {
     buffer: Vec<u8>,
@@ -57,29 +57,33 @@ impl SendablePacket {
         self.buffer.len()
     }
 
-    pub fn auth_encypher(&mut self) {
-        let mut ecx: u64 = 0;
-        let bytes = bytes::Bytes::from_iter(self.buffer.clone());
+    pub fn auth_encypher(&mut self, key: i32) {
+        let mut ecx = key.clone();
+        let mut edx: i32;
+        let bytes = Bytes::from(self.buffer.clone());
         let buffer_len = bytes.len();
         let mut reader = bytes.reader();
-        let mut new_buffer: Vec<u8> = vec![];
-
-        for _i in (0..buffer_len).step_by(4) {
-            let mut edx = [0u8; 4];
-            match reader.read(&mut edx) {
+        let mut pos = 4;
+        reader.consume(4);
+        while pos < buffer_len - 8 {
+            let mut edx_buf = [0u8; 4];
+            match reader.read(&mut edx_buf) {
                 Ok(_size) => {
-                    ecx = ecx + u32::from_le_bytes(edx) as u64;
-                    let edx_int: u32 = u32::from_le_bytes(edx) ^ ecx as u32;
-                    new_buffer.write(&edx_int.to_le_bytes()).unwrap();
+                    edx = i32::from_le_bytes(edx_buf);
+                    ecx = ecx.wrapping_add(edx);
+                    edx ^= ecx;
+                    self.buffer[pos..pos + 4].copy_from_slice(&edx.to_le_bytes());
                 }
                 Err(_size) => println!("Fail"),
             }
+
+            pos += 4;
         }
 
-        self.buffer = new_buffer;
+        self.buffer[pos..pos + 4].copy_from_slice(&ecx.to_le_bytes());
     }
 
-    pub fn blowfish_encrypt(&mut self, blowfish: Blowfish) {
+    pub fn blowfish_encrypt(&mut self, blowfish: &Blowfish) {
         let mut encrypted_stream: Vec<u8> = vec![];
         for i in self.buffer.chunks(8) {
             let mut enc_buffer = [0u8; 8];
@@ -102,7 +106,7 @@ impl SendablePacket {
     }
 
     pub fn add_checksum(&mut self) {
-        let size = self.buffer.len();
+        let size = self.buffer.len() - 12;
 
         let mut checksum: u64 = 0;
         let mut ecx: u32;
@@ -110,7 +114,7 @@ impl SendablePacket {
 
         while i < size - 4 {
             let mut num = [0u8; 4];
-            self.buffer.get(i..i + 3).unwrap().copy_to_slice(&mut num);
+            self.buffer.get(i..i + 4).unwrap().copy_to_slice(&mut num);
             ecx = u32::from_le_bytes(num);
             checksum ^= u64::from(ecx);
             i += 4;
@@ -133,5 +137,5 @@ impl SendablePacket {
 pub type SendablePacketOutput = Box<dyn SendablePacketBytes + Send>;
 
 pub trait SendablePacketBytes {
-    fn to_bytes(&self) -> Vec<u8>;
+    fn to_bytes(&self, blowfish: &Blowfish) -> Vec<u8>;
 }

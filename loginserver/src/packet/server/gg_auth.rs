@@ -1,33 +1,41 @@
+use crate::packet::client::FromDecryptedPacket;
 use shared::extcrypto::blowfish::Blowfish;
-use shared::network::packet::sendable_packet::{SendablePacket, SendablePacketBytes};
+use shared::network::packet::receivable::ReceivablePacket;
+use shared::network::packet::sendable::{SendablePacket, SendablePacketBytes};
 
 pub struct GGAuthPacket {
-    pub session_id: u32,
-    blowfish: Blowfish,
+    pub session_id: i32,
 }
 
 impl GGAuthPacket {
-    pub fn new(blowfish: &Blowfish) -> GGAuthPacket {
-        GGAuthPacket {
-            session_id: 0,
-            blowfish: blowfish.clone(),
-        }
+    pub fn new(session_id: i32) -> GGAuthPacket {
+        GGAuthPacket { session_id }
     }
 }
 
 impl SendablePacketBytes for GGAuthPacket {
-    fn to_bytes(&self) -> Vec<u8> {
+    fn to_bytes(&self, blowfish: &Blowfish) -> Vec<u8> {
         let mut packet = SendablePacket::new();
         packet.write_uint8(0x0b);
-        packet.write_int32(self.session_id as i32);
+        packet.write_int32(self.session_id);
         packet.write_int32(0);
         packet.write_int32(0);
         packet.write_int32(0);
         packet.write_int32(0);
         packet.pad_bits();
         packet.add_checksum();
-        packet.blowfish_encrypt(self.blowfish);
+        packet.blowfish_encrypt(blowfish);
 
         packet.to_bytes()
+    }
+}
+
+impl FromDecryptedPacket for GGAuthPacket {
+    fn from_decrypted_packet(packet: Vec<u8>) -> Self {
+        let mut packet = ReceivablePacket::new(packet);
+        packet.read_uint8().unwrap();
+        let session_id = packet.read_int32().unwrap();
+
+        GGAuthPacket { session_id }
     }
 }

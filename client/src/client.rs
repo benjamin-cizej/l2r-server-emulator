@@ -1,12 +1,10 @@
-use crate::crypto::dec_xor_pass;
 use loginserver::packet::client::{decrypt_packet, FromDecryptedPacket};
-use loginserver::packet::server::InitPacket;
-use shared::crypto::blowfish::StaticL2Blowfish;
 use shared::extcrypto::blowfish::Blowfish;
 use shared::network::channel::channel_connection::{connect, ChannelConnector};
 use shared::network::channel::channel_stream::ChannelStream;
-use shared::network::read_packet;
+use shared::network::packet::sendable::SendablePacketOutput;
 use shared::network::stream::Streamable;
+use shared::network::{read_packet, send_packet};
 use shared::tokio::net::{TcpStream, ToSocketAddrs};
 
 pub struct Client<T>
@@ -43,19 +41,20 @@ where
         &self.bytes
     }
 
-    pub async fn read_init_packet(&mut self) -> InitPacket {
-        let blowfish = Blowfish::new_static();
+    pub async fn read_packet<P>(&mut self, blowfish: &Blowfish) -> P
+    where
+        P: FromDecryptedPacket,
+    {
         let packet = read_packet(&mut self.connection).await.unwrap();
-        let mut packet = decrypt_packet(packet, &blowfish);
-        let packet_len = packet.len();
-        let key_start_index = packet_len - 8;
-        let key_end_index = packet_len - 4;
-        let key = packet.get(key_start_index..key_end_index).unwrap();
-        let key = u32::from_le_bytes(key.try_into().unwrap());
-        dec_xor_pass(&mut packet, 0, packet_len, key).unwrap();
+        let decrypted_packet = decrypt_packet(packet, &blowfish);
+        self.bytes = decrypted_packet.clone();
 
-        self.bytes = packet;
+        P::from_decrypted_packet(decrypted_packet)
+    }
 
-        InitPacket::from_decrypted_packet(self.bytes.clone())
+    pub async fn send_packet(&mut self, packet: SendablePacketOutput, blowfish: &Blowfish) {
+        send_packet(&mut self.connection, packet, blowfish)
+            .await
+            .unwrap();
     }
 }
