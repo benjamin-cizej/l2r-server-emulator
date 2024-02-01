@@ -106,7 +106,7 @@ impl SendablePacket {
     }
 
     pub fn add_checksum(&mut self) {
-        let size = self.buffer.len() - 12;
+        let size = self.buffer.len();
 
         let mut checksum: u64 = 0;
         let mut ecx: u32;

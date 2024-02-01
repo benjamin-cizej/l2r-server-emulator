@@ -99,7 +99,7 @@ impl ReceivablePacket {
     }
 
     pub fn verify_checksum(&self) -> bool {
-        let size = self.original_bytes.len();
+        let size = self.original_bytes.len() - 12;
         if size % 4 != 0 || size <= 4 {
             return false;
         }
