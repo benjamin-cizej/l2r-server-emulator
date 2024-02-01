@@ -1,5 +1,6 @@
 use shared::extcrypto::blowfish::Blowfish;
 use shared::network::packet::sendable::{SendablePacket, SendablePacketBytes};
+use shared::structs::session::Session;
 
 pub enum LoginFailReason {
     AccountInUse,
@@ -24,7 +25,7 @@ impl LoginFailPacket {
 }
 
 impl SendablePacketBytes for LoginFailPacket {
-    fn to_bytes(&self, blowfish: &Blowfish) -> Vec<u8> {
+    fn to_bytes(&self, blowfish: &Blowfish, _: &Session) -> Vec<u8> {
         let mut packet = SendablePacket::new();
         packet.write_uint8(0x01);
         packet.write_uint8(self.reason.get_opcode());

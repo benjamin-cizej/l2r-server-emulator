@@ -1,6 +1,7 @@
 use crate::packet::client::FromDecryptedPacket;
 use shared::extcrypto::blowfish::Blowfish;
 use shared::network::packet::sendable::{SendablePacket, SendablePacketBytes};
+use shared::structs::session::Session;
 
 pub struct AuthGameGuardPacket {
     session_id: i32,
@@ -25,10 +26,10 @@ impl FromDecryptedPacket for AuthGameGuardPacket {
 }
 
 impl SendablePacketBytes for AuthGameGuardPacket {
-    fn to_bytes(&self, blowfish: &Blowfish) -> Vec<u8> {
+    fn to_bytes(&self, blowfish: &Blowfish, session: &Session) -> Vec<u8> {
         let mut packet = SendablePacket::new();
         packet.write_uint8(0x07);
-        packet.write_int32(self.session_id);
+        packet.write_int32(session.session_id);
         packet.write_int32(0);
         packet.write_int32(0);
         packet.write_int32(0);

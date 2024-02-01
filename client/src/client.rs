@@ -5,6 +5,7 @@ use shared::network::channel::channel_stream::ChannelStream;
 use shared::network::packet::sendable::SendablePacketOutput;
 use shared::network::stream::Streamable;
 use shared::network::{read_packet, send_packet};
+use shared::structs::session::Session;
 use shared::tokio::net::{TcpStream, ToSocketAddrs};
 
 pub struct Client<T>
@@ -52,8 +53,13 @@ where
         P::from_decrypted_packet(decrypted_packet)
     }
 
-    pub async fn send_packet(&mut self, packet: SendablePacketOutput, blowfish: &Blowfish) {
-        send_packet(&mut self.connection, packet, blowfish)
+    pub async fn send_packet(
+        &mut self,
+        packet: SendablePacketOutput,
+        blowfish: &Blowfish,
+        session: &Session,
+    ) {
+        send_packet(&mut self.connection, packet, blowfish, session)
             .await
             .unwrap();
     }

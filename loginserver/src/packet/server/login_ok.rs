@@ -1,5 +1,6 @@
 use shared::extcrypto::blowfish::Blowfish;
 use shared::network::packet::sendable::{SendablePacket, SendablePacketBytes};
+use shared::structs::session::Session;
 
 pub struct LoginOkPacket {
     pub login_ok1: i32,
@@ -16,7 +17,7 @@ impl LoginOkPacket {
 }
 
 impl SendablePacketBytes for LoginOkPacket {
-    fn to_bytes(&self, blowfish: &Blowfish) -> Vec<u8> {
+    fn to_bytes(&self, blowfish: &Blowfish, _: &Session) -> Vec<u8> {
         let mut packet = SendablePacket::new();
         packet.write_uint8(0x03);
         packet.write_int32(self.login_ok1);

@@ -5,6 +5,7 @@ use std::io::Result;
 
 use crate::network::packet::sendable::SendablePacketOutput;
 use crate::network::stream::Streamable;
+use crate::structs::session::Session;
 use num::ToPrimitive;
 
 pub mod channel;
@@ -30,9 +31,10 @@ pub async fn send_packet(
     stream: &mut impl Streamable,
     packet: SendablePacketOutput,
     blowfish: &Blowfish,
+    session: &Session,
 ) -> Result<()> {
     stream
-        .send_bytes(packet.to_bytes(blowfish).as_slice())
+        .send_bytes(packet.to_bytes(blowfish, session).as_slice())
         .await?;
 
     Ok(())

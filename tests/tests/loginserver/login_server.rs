@@ -9,6 +9,7 @@ use shared::network::channel::channel_listener::ChannelListener;
 use shared::network::channel::channel_stream::ChannelStream;
 use shared::network::packet::sendable::SendablePacketOutput;
 use shared::network::stream::Streamable;
+use shared::structs::session::Session;
 use shared::tokio;
 use shared::tokio::net::{TcpListener, TcpStream};
 use shared::tokio::task::AbortHandle;
@@ -59,6 +60,7 @@ async fn it_sends_init_packet_on_connection() {
 async fn it_sends_gg_auth_packet_on_request() {
     let (mut connector, handle) = start_channel_server().await;
     let mut client = Client::<ChannelStream>::connect_channel(&mut connector).await;
+    let session = Session::new();
     let blowfish = Blowfish::new_static();
     let packet = client.read_packet::<InitPacket>(&blowfish).await;
 
@@ -66,7 +68,7 @@ async fn it_sends_gg_auth_packet_on_request() {
     let session_id = packet.get_session_id();
     let packet: SendablePacketOutput = Box::new(AuthGameGuardPacket::new(session_id));
 
-    client.send_packet(packet, &blowfish).await;
+    client.send_packet(packet, &blowfish, &session).await;
 
     let packet = client.read_packet::<GGAuthPacket>(&blowfish).await;
     assert_eq!(session_id, packet.session_id);

@@ -42,10 +42,10 @@ impl InitPacket {
 }
 
 impl SendablePacketBytes for InitPacket {
-    fn to_bytes(&self, blowfish: &Blowfish) -> Vec<u8> {
+    fn to_bytes(&self, blowfish: &Blowfish, session: &Session) -> Vec<u8> {
         let mut packet = SendablePacket::new();
         packet.write_uint8(0x00);
-        packet.write_int32(self.session_id);
+        packet.write_int32(session.session_id);
         packet.write_int32(self.protocol);
         packet.write_bytes(self.modulus.scramble_modulus());
         packet.write_int32(0);

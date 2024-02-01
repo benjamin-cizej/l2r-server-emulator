@@ -5,6 +5,7 @@ use extcrypto::blowfish::Blowfish;
 use extcrypto::symmetriccipher::BlockEncryptor;
 use num::ToPrimitive;
 use std::io::{BufRead, Read};
+use crate::structs::session::Session;
 
 pub struct SendablePacket {
     buffer: Vec<u8>,
@@ -137,5 +138,5 @@ impl SendablePacket {
 pub type SendablePacketOutput = Box<dyn SendablePacketBytes + Send>;
 
 pub trait SendablePacketBytes {
-    fn to_bytes(&self, blowfish: &Blowfish) -> Vec<u8>;
+    fn to_bytes(&self, blowfish: &Blowfish, session: &Session) -> Vec<u8>;
 }

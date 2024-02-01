@@ -12,6 +12,7 @@ use shared::network::packet::swap32;
 use shared::network::stream::Streamable;
 use shared::network::{read_packet, send_packet};
 use shared::structs::server::Server;
+use shared::structs::session::Session;
 
 mod auth_gameguard;
 mod request_auth_login;
@@ -58,7 +59,11 @@ pub fn decrypt_packet(packet: Vec<u8>, blowfish: &Blowfish) -> Vec<u8> {
     decrypted_stream
 }
 
-pub async fn handle_packet(stream: &mut impl Streamable, blowfish: &Blowfish) -> Result<()> {
+pub async fn handle_packet(
+    stream: &mut impl Streamable,
+    blowfish: &Blowfish,
+    session: &Session,
+) -> Result<()> {
     let packet = read_packet(stream).await?;
     let decrypted_packet = decrypt_packet(packet, &blowfish);
     let packet_type = match PacketTypeEnum::from_packet(&decrypted_packet) {
@@ -101,7 +106,7 @@ pub async fn handle_packet(stream: &mut impl Streamable, blowfish: &Blowfish) ->
         PacketTypeEnum::RequestServerLogin => Box::new(PlayOkPacket::new(0, 0)),
     };
 
-    send_packet(stream, matched_packet, blowfish).await?;
+    send_packet(stream, matched_packet, blowfish, session).await?;
 
     Ok(())
 }

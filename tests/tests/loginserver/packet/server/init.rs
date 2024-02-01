@@ -11,7 +11,7 @@ fn it_encrypts_and_decrypts_packet() {
     let blowfish = Blowfish::new_static();
     let init_packet = InitPacket::new(&session);
 
-    let packet = init_packet.to_bytes(&blowfish);
+    let packet = init_packet.to_bytes(&blowfish, &session);
     // Skip packet length.
     let (_, packet) = packet.split_at(2);
 

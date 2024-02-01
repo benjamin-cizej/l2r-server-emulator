@@ -1,6 +1,7 @@
 use rand::{thread_rng, Rng};
 use rsa::{BigUint, RsaPrivateKey};
 
+#[derive(Clone)]
 pub struct Session {
     pub session_id: i32,
     pub blowfish_key: [u8; 16],

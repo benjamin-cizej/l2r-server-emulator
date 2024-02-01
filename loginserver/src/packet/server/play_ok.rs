@@ -1,5 +1,6 @@
 use shared::extcrypto::blowfish::Blowfish;
 use shared::network::packet::sendable::{SendablePacket, SendablePacketBytes};
+use shared::structs::session::Session;
 
 pub struct PlayOkPacket {
     pub play_ok1: i32,
@@ -13,7 +14,7 @@ impl PlayOkPacket {
 }
 
 impl SendablePacketBytes for PlayOkPacket {
-    fn to_bytes(&self, blowfish: &Blowfish) -> Vec<u8> {
+    fn to_bytes(&self, blowfish: &Blowfish, _: &Session) -> Vec<u8> {
         let mut packet = SendablePacket::new();
         packet.write_uint8(0x07);
         packet.write_int32(self.play_ok1);
