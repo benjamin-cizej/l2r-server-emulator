@@ -6,7 +6,7 @@ use shared::network::packet::sendable::SendablePacketBytes;
 use shared::structs::session::Session;
 
 #[test]
-fn it_encrypts_and_decrypts_init_packet() {
+fn it_encrypts_and_decrypts_packet() {
     let session = Session::new();
     let blowfish = Blowfish::new_static();
     let init_packet = InitPacket::new(&session);
