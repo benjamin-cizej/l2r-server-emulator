@@ -21,7 +21,7 @@ impl SendablePacketBytes for LoginOkPacket {
         packet.write_uint8(0x03);
         packet.write_int32(self.login_ok1);
         packet.write_int32(self.login_ok2);
-        packet.pad_bits();
+        packet.write_bytes(vec![0u8; 3]);
         packet.add_checksum();
         packet.blowfish_encrypt(blowfish);
 
