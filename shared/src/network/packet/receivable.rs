@@ -2,7 +2,7 @@ use bytes::buf::Reader;
 use bytes::{Buf, Bytes};
 use std::io;
 use std::io::ErrorKind::InvalidData;
-use std::io::{Error, Read, Result};
+use std::io::{Error, ErrorKind, Read, Result};
 
 pub struct ReceivablePacket {
     reader: Reader<Bytes>,
@@ -98,30 +98,33 @@ impl ReceivablePacket {
         Ok(())
     }
 
-    pub fn verify_checksum(&self) -> bool {
+    pub fn verify_checksum(&self) -> Result<()> {
         let size = self.original_bytes.len() - 12;
         if size % 4 != 0 || size <= 4 {
-            return false;
+            return Err(Error::from(InvalidData));
         }
 
-        let mut chksum: i64 = 0;
+        let mut checksum: i64 = 0;
         let count = size - 4;
         let mut check: i64;
 
         for i in (0..count).step_by(4) {
             let num_bytes = match self.original_bytes.get(i..i + 4) {
                 Some(bytes) => bytes,
-                None => return false,
+                None => return Err(Error::from(InvalidData)),
             };
             check = i64::from_le_bytes(num_bytes.try_into().unwrap());
-            chksum ^= check;
+            checksum ^= check;
         }
 
         let num_bytes = match self.original_bytes.get(count - 4..count - 1) {
             Some(bytes) => bytes,
-            None => return false,
+            None => return Err(Error::from(InvalidData)),
         };
 
-        chksum == i64::from_le_bytes(num_bytes.try_into().unwrap())
+        match checksum == i64::from_le_bytes(num_bytes.try_into().unwrap()) {
+            true => Ok(()),
+            false => Err(Error::from(ErrorKind::InvalidInput)),
+        }
     }
 }
