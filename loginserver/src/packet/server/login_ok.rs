@@ -1,6 +1,8 @@
+use crate::packet::client::FromDecryptedPacket;
 use crate::packet::server::ServerPacketBytes;
+use shared::network::packet::receivable::ReceivablePacket;
 use shared::network::packet::sendable::SendablePacket;
-use shared::structs::session::ServerSession;
+use shared::structs::session::{ClientSession, ServerSession};
 use std::io;
 
 pub struct LoginOkPacket {
@@ -27,5 +29,20 @@ impl ServerPacketBytes for LoginOkPacket {
         packet.add_checksum();
 
         Ok(packet.to_vec())
+    }
+}
+
+impl FromDecryptedPacket for LoginOkPacket {
+    fn from_decrypted_packet(packet: Vec<u8>, _: Option<&ClientSession>) -> io::Result<Self> {
+        let mut packet = ReceivablePacket::new(packet);
+        packet.read_uint8()?;
+
+        let login_ok1 = packet.read_int32()?;
+        let login_ok2 = packet.read_int32()?;
+
+        Ok(LoginOkPacket {
+            login_ok1,
+            login_ok2,
+        })
     }
 }

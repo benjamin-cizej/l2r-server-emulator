@@ -2,6 +2,7 @@ use shared::network::channel::channel_connection::{connect, ChannelConnector};
 use shared::network::channel::channel_stream::ChannelStream;
 use shared::network::stream::Streamable;
 use shared::network::{read_packet, send_packet};
+use shared::tokio::io;
 use shared::tokio::net::{TcpStream, ToSocketAddrs};
 
 pub struct Client<T>
@@ -38,14 +39,16 @@ where
         &self.bytes
     }
 
-    pub async fn read_packet(&mut self) -> Vec<u8> {
-        let packet = read_packet(&mut self.connection).await.unwrap();
+    pub async fn read_packet(&mut self) -> io::Result<Vec<u8>> {
+        let packet = read_packet(&mut self.connection).await?;
         self.bytes = packet.clone();
 
-        packet
+        Ok(packet)
     }
 
-    pub async fn send_packet(&mut self, packet: Vec<u8>) {
-        send_packet(&mut self.connection, packet).await.unwrap();
+    pub async fn send_packet(&mut self, packet: Vec<u8>) -> io::Result<()> {
+        send_packet(&mut self.connection, packet).await?;
+
+        Ok(())
     }
 }

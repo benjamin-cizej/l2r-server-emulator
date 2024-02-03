@@ -77,7 +77,7 @@ async fn handle_stream(
         Err(e) => match e.kind() {
             AlreadyExists => {
                 println!("Account with that username is already connected");
-                println!("Connection terminated.");
+                println!("Connection terminated for {}.", addr);
                 return;
             }
             _ => {
@@ -107,10 +107,12 @@ async fn handle_stream(
                             continue;
                         }
                         ConnectionAborted => {
+                            clients.lock().await.remove(&account);
                             println!("Connection closed from {:?}", addr);
                             return;
                         }
                         _ => {
+                            clients.lock().await.remove(&account);
                             println!("Connection terminated with an error: {:?}", e);
                             return;
                         }
@@ -122,9 +124,10 @@ async fn handle_stream(
                     Ok((action, _)) => {
                         match action {
                             MessageAction::Disconnect => {
-                                let packet = LoginFailPacket::new(LoginFailReason::AccountInUse).to_bytes(None).unwrap();
+                                let mut packet = LoginFailPacket::new(LoginFailReason::AccountInUse).to_bytes(None).unwrap();
+                                encrypt_packet(&mut packet, &Blowfish::new(&session.blowfish_key));
                                 send_packet(&mut stream, packet).await.unwrap();
-                                println!("Connection terminated.");
+                                println!("Connection terminated for {:?}.", addr);
                                 {
                                     clients.lock().await.remove(&account);
                                 }
@@ -195,6 +198,10 @@ async fn handle_login_credentials(
                 sender
                     .send((MessageAction::Disconnect, packet.to_bytes(Some(&session))?))
                     .unwrap();
+
+                let mut packet = packet.to_bytes(None).unwrap();
+                encrypt_packet(&mut packet, &Blowfish::new(&session.blowfish_key));
+                send_packet(stream, packet).await?;
                 return Err(std::io::Error::from(AlreadyExists));
             }
 

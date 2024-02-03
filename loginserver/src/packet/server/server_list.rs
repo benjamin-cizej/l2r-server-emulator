@@ -42,7 +42,7 @@ impl ServerPacketBytes for ServerListPacket {
         }
 
         packet.write_uint16(0);
-        packet.pad_bits();
+        packet.write_bytes(vec![0; 6]);
         packet.add_checksum();
 
         Ok(packet.to_vec())

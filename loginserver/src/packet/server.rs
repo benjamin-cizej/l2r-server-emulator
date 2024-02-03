@@ -4,7 +4,7 @@ pub use init::InitPacket;
 pub use login_ok::LoginOkPacket;
 pub use play_ok::PlayOkPacket;
 pub use server_list::ServerListPacket;
-use shared::crypto::blowfish::decrypt_packet;
+use shared::crypto::blowfish::{decrypt_packet, encrypt_packet};
 use shared::extcrypto::blowfish::Blowfish;
 use shared::network::stream::Streamable;
 use shared::network::{read_packet, send_packet};
@@ -75,8 +75,8 @@ pub async fn handle_packet(
     };
 
     let mut packet = matched_packet.to_bytes(Some(&session))?;
-    decrypt_packet(&mut packet, &Blowfish::new(&session.blowfish_key));
-    send_packet(stream, matched_packet.to_bytes(Some(&session))?).await?;
+    encrypt_packet(&mut packet, &Blowfish::new(&session.blowfish_key));
+    send_packet(stream, packet).await?;
 
     Ok(())
 }
