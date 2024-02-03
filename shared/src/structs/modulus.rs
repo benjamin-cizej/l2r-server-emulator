@@ -1,5 +1,6 @@
 use rsa::BigUint;
 
+#[derive(Clone)]
 pub struct RsaKeyModulus {
     value: BigUint,
 }
@@ -15,50 +16,48 @@ impl RsaKeyModulus {
 }
 
 pub trait Scramble {
-    fn scramble_modulus(&self) -> Vec<u8>;
+    fn to_scrambled_bytes(self) -> Vec<u8>;
 
     fn from_scrambled_bytes(bytes: Vec<u8>) -> Self;
 }
 
 impl Scramble for RsaKeyModulus {
-    fn scramble_modulus(&self) -> Vec<u8> {
+    fn to_scrambled_bytes(self) -> Vec<u8> {
         let modulus = self.value.to_bytes_be();
         let mut scrambled = modulus.clone();
-        for i in 0..=3 {
-            scrambled.swap(i, 0x4d + i);
+        for i in 0..4 {
+            scrambled.swap(i, 77 + i);
         }
 
-        for i in 0..0x40 {
-            scrambled[i] ^= scrambled[0x40 + i];
+        for i in 0..64 {
+            scrambled[i] ^= scrambled[64 + i];
         }
 
-        for i in 0..0x04 {
-            scrambled[0x0d + i] ^= scrambled[0x34 + i];
+        for i in 0..4 {
+            scrambled[13 + i] ^= scrambled[52 + i];
         }
-        for i in 0..0x40 {
-            scrambled[0x40 + i] ^= scrambled[i];
+        for i in 0..64 {
+            scrambled[64 + i] ^= scrambled[i];
         }
 
         scrambled
     }
 
     fn from_scrambled_bytes(mut bytes: Vec<u8>) -> Self {
-        for i in 0..0x40 {
-            bytes[0x40 + i] = bytes[0x40 + i] ^ bytes[i];
+        for i in 0..64 {
+            bytes[64 + i] ^= bytes[i];
         }
 
         for i in 0..4 {
-            bytes[0x0d + i] = bytes[0x0d + i] ^ bytes[0x34 + i];
+            bytes[13 + i] ^= bytes[52 + i];
         }
 
-        for i in 0..0x40 {
-            bytes[i] = bytes[i] ^ bytes[0x40 + i];
+        for i in 0..64 {
+            bytes[i] ^= bytes[64 + i];
         }
 
         for i in 0..4 {
-            let temp = bytes[i];
-            bytes[i] = bytes[0x4d + i];
-            bytes[0x4d + i] = temp;
+            bytes.swap(i, 77 + i);
         }
 
         RsaKeyModulus {

@@ -1,3 +1,4 @@
+use crate::crypto::xor::{xor_decypher_packet, xor_encypher_packet};
 use crate::packet::client::FromDecryptedPacket;
 use crate::packet::server::ServerPacketBytes;
 use shared::network::packet::receivable::ReceivablePacket;
@@ -58,7 +59,7 @@ impl ServerPacketBytes for InitPacket {
         packet.write_uint8(0x00);
         packet.write_int32(self.session_id);
         packet.write_int32(self.protocol);
-        packet.write_bytes(self.modulus.scramble_modulus());
+        packet.write_bytes(self.modulus.clone().to_scrambled_bytes());
         packet.write_int32(0);
         packet.write_int32(0);
         packet.write_int32(0);
@@ -66,16 +67,19 @@ impl ServerPacketBytes for InitPacket {
         packet.write_bytes(Vec::from(self.blowfish_key));
         packet.write_uint8(0);
         packet.write_bytes(vec![0u8; 14]);
-        packet.auth_encypher(thread_rng().gen());
 
-        Ok(packet.to_vec())
+        let mut bytes = packet.to_vec();
+        xor_encypher_packet(&mut bytes, thread_rng().gen())?;
+
+        Ok(bytes)
     }
 }
 
 impl FromDecryptedPacket for InitPacket {
-    fn from_decrypted_packet(packet: Vec<u8>, _: Option<&ClientSession>) -> io::Result<Self> {
+    fn from_decrypted_packet(mut packet: Vec<u8>, _: Option<&ClientSession>) -> io::Result<Self> {
+        xor_decypher_packet(&mut packet)?;
+
         let mut packet = ReceivablePacket::new(packet);
-        packet.auth_decypher()?;
         packet.read_uint8()?;
 
         let session_id = packet.read_int32()?;
