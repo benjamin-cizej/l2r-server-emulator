@@ -1,5 +1,5 @@
 use crate::packet::client::FromDecryptedPacket;
-use crate::packet::server::login_fail::LoginFailReason::{AccountInUse, Unknown};
+use crate::packet::server::login_fail::LoginFailReason::{AccessFailed, AccountInUse, Unknown};
 use crate::packet::server::ServerPacketBytes;
 use shared::network::packet::receivable::ReceivablePacket;
 use shared::network::packet::sendable::SendablePacket;
@@ -9,6 +9,7 @@ use std::io;
 #[derive(Clone, Debug, PartialEq)]
 pub enum LoginFailReason {
     AccountInUse,
+    AccessFailed,
     Unknown,
 }
 
@@ -16,6 +17,7 @@ impl LoginFailReason {
     pub fn get_opcode(&self) -> u8 {
         match self {
             AccountInUse => 0x07,
+            AccessFailed => 0x15,
             Unknown => 0,
         }
     }
@@ -23,6 +25,7 @@ impl LoginFailReason {
     pub fn from_opcode(opcode: u8) -> Self {
         match opcode {
             0x07 => AccountInUse,
+            0x15 => AccessFailed,
             _ => Unknown,
         }
     }

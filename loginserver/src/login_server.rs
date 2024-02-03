@@ -16,10 +16,11 @@ use std::io::{
 use std::net::SocketAddr;
 use std::sync::Arc;
 
-use crate::packet::client::{AuthGameGuardPacket, PacketTypeEnum, RequestAuthLoginPacket};
+use crate::packet::client::{PacketTypeEnum, RequestAuthLoginPacket};
+use crate::packet::handlers::auth_gameguard::handle_gameguard_auth;
 use crate::packet::server::login_fail::{LoginFailPacket, LoginFailReason};
 use crate::packet::server::{
-    handle_packet, FromDecryptedPacket, GGAuthPacket, InitPacket, LoginOkPacket, ServerPacketBytes,
+    handle_packet, FromDecryptedPacket, InitPacket, LoginOkPacket, ServerPacketBytes,
     ServerPacketOutput,
 };
 
@@ -140,38 +141,6 @@ async fn handle_stream(
             }
         }
     }
-}
-
-async fn handle_gameguard_auth(
-    stream: &mut impl Streamable,
-    session: &ServerSession,
-) -> Result<()> {
-    let mut packet = read_packet(stream).await?;
-    decrypt_packet(&mut packet, &Blowfish::new(&session.blowfish_key));
-    let mut packet = match PacketTypeEnum::from_packet(&packet) {
-        None => {
-            return Err(std::io::Error::new(
-                Unsupported,
-                format!("0x{:02X}", packet.get(0).unwrap()),
-            ));
-        }
-        Some(PacketTypeEnum::AuthGameGuard) => {
-            let packet = AuthGameGuardPacket::from_decrypted_packet(packet, None)?;
-            let session_id = packet.get_session_id();
-            GGAuthPacket::new(session_id).to_bytes(None).unwrap()
-        }
-        Some(_) => {
-            return Err(std::io::Error::new(
-                InvalidData,
-                "Did not receive AuthGameGuard packet",
-            ));
-        }
-    };
-
-    encrypt_packet(&mut packet, &Blowfish::new(&session.blowfish_key));
-    send_packet(stream, packet).await?;
-
-    Ok(())
 }
 
 async fn handle_login_credentials(

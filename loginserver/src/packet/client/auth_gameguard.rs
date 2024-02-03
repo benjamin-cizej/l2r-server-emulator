@@ -3,8 +3,7 @@ use crate::packet::server::FromDecryptedPacket;
 use shared::network::packet::receivable::ReceivablePacket;
 use shared::network::packet::sendable::SendablePacket;
 use shared::structs::session::{ClientSession, ServerSession};
-use shared::tokio::io;
-use std::io::{ErrorKind::Other, Result};
+use std::io::Result;
 
 pub struct AuthGameGuardPacket {
     session_id: i32,
@@ -15,7 +14,7 @@ impl AuthGameGuardPacket {
         AuthGameGuardPacket { session_id }
     }
 
-    pub fn get_session_id(self) -> i32 {
+    pub fn get_session_id(&self) -> i32 {
         self.session_id
     }
 }
@@ -34,15 +33,10 @@ impl FromDecryptedPacket for AuthGameGuardPacket {
 }
 
 impl ClientPacketBytes for AuthGameGuardPacket {
-    fn to_bytes(&self, session: Option<&ClientSession>) -> Result<Vec<u8>> {
-        let session = match session {
-            Some(session) => session,
-            None => return Err(io::Error::new(Other, "Session must be provided.")),
-        };
-
+    fn to_bytes(&self, _: Option<&ClientSession>) -> Result<Vec<u8>> {
         let mut packet = SendablePacket::new();
         packet.write_uint8(0x07);
-        packet.write_int32(session.session_id);
+        packet.write_int32(self.session_id);
         packet.write_int32(0);
         packet.write_int32(0);
         packet.write_int32(0);
