@@ -1,7 +1,8 @@
-use shared::extcrypto::blowfish::Blowfish;
-use shared::network::packet::sendable::{SendablePacket, SendablePacketBytes};
+use crate::packet::server::ServerPacketBytes;
+use shared::network::packet::sendable::SendablePacket;
 use shared::structs::server::Server;
-use shared::structs::session::Session;
+use shared::structs::session::ServerSession;
+use shared::tokio::io;
 
 pub struct ServerListPacket {
     pub list: Vec<Server>,
@@ -13,8 +14,8 @@ impl ServerListPacket {
     }
 }
 
-impl SendablePacketBytes for ServerListPacket {
-    fn to_bytes(&self, blowfish: &Blowfish, _: &Session) -> Vec<u8> {
+impl ServerPacketBytes for ServerListPacket {
+    fn to_bytes(&self, _: Option<&ServerSession>) -> io::Result<Vec<u8>> {
         let mut packet = SendablePacket::new();
         packet.write_uint8(0x04);
         packet.write_uint8(self.list.len() as u8);
@@ -43,8 +44,7 @@ impl SendablePacketBytes for ServerListPacket {
         packet.write_uint16(0);
         packet.pad_bits();
         packet.add_checksum();
-        packet.blowfish_encrypt(blowfish);
 
-        packet.to_bytes()
+        Ok(packet.to_vec())
     }
 }

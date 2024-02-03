@@ -39,7 +39,7 @@ async fn handle_game_stream(mut stream: TcpStream) {
                     packet.add_checksum();
                     packet.xor_encrypt(&mut xor);
 
-                    stream.write(packet.to_bytes().as_slice()).await.unwrap();
+                    stream.write(packet.to_vec().as_slice()).await.unwrap();
                     stream.flush().await.unwrap();
                 }
                 0x0e => {
@@ -55,7 +55,7 @@ async fn handle_game_stream(mut stream: TcpStream) {
                     packet.add_checksum();
                     packet.xor_encrypt(&mut xor);
 
-                    stream.write(packet.to_bytes().as_slice()).await.unwrap();
+                    stream.write(packet.to_vec().as_slice()).await.unwrap();
                     stream.flush().await.unwrap();
                 }
                 0x2b => {
@@ -122,7 +122,7 @@ async fn handle_game_stream(mut stream: TcpStream) {
 
                     packet.xor_encrypt(&mut xor);
 
-                    stream.write(packet.to_bytes().as_slice()).await.unwrap();
+                    stream.write(packet.to_vec().as_slice()).await.unwrap();
                     stream.flush().await.unwrap()
                 }
                 0x12 => {
@@ -171,7 +171,7 @@ async fn handle_game_stream(mut stream: TcpStream) {
 
                     packet.xor_encrypt(&mut xor);
 
-                    stream.write(packet.to_bytes().as_slice()).await.unwrap();
+                    stream.write(packet.to_vec().as_slice()).await.unwrap();
                     stream.flush().await.unwrap();
 
                     let mut packet = SendablePacket::new();
@@ -182,7 +182,7 @@ async fn handle_game_stream(mut stream: TcpStream) {
                     packet.add_checksum();
                     packet.xor_encrypt(&mut xor);
 
-                    stream.write(packet.to_bytes().as_slice()).await.unwrap();
+                    stream.write(packet.to_vec().as_slice()).await.unwrap();
                     stream.flush().await.unwrap();
                 }
                 0x11 => {
@@ -318,7 +318,7 @@ async fn handle_game_stream(mut stream: TcpStream) {
 
                     packet.xor_encrypt(&mut xor);
 
-                    stream.write(packet.to_bytes().as_slice()).await.unwrap();
+                    stream.write(packet.to_vec().as_slice()).await.unwrap();
                     stream.flush().await.unwrap();
 
                     let mut packet = SendablePacket::new();
@@ -349,7 +349,7 @@ async fn handle_game_stream(mut stream: TcpStream) {
 
                     packet.xor_encrypt(&mut xor);
 
-                    stream.write(packet.to_bytes().as_slice()).await.unwrap();
+                    stream.write(packet.to_vec().as_slice()).await.unwrap();
                     stream.flush().await.unwrap();
                 }
                 0xd0 => match data[1] {
@@ -366,7 +366,7 @@ async fn handle_game_stream(mut stream: TcpStream) {
 
                         packet.xor_encrypt(&mut xor);
 
-                        stream.write(packet.to_bytes().as_slice()).await.unwrap();
+                        stream.write(packet.to_vec().as_slice()).await.unwrap();
                         stream.flush().await.unwrap();
                     }
                     0x58 => {
@@ -380,7 +380,7 @@ async fn handle_game_stream(mut stream: TcpStream) {
 
                         packet.xor_encrypt(&mut xor);
 
-                        stream.write(packet.to_bytes().as_slice()).await.unwrap();
+                        stream.write(packet.to_vec().as_slice()).await.unwrap();
                         stream.flush().await.unwrap();
                     }
                     packet => {
@@ -399,7 +399,7 @@ async fn handle_game_stream(mut stream: TcpStream) {
 
                     packet.xor_encrypt(&mut xor);
 
-                    stream.write(packet.to_bytes().as_slice()).await.unwrap();
+                    stream.write(packet.to_vec().as_slice()).await.unwrap();
                     stream.flush().await.unwrap();
                 }
                 0x0f => {
@@ -427,7 +427,7 @@ async fn handle_game_stream(mut stream: TcpStream) {
 
                     packet.xor_encrypt(&mut xor);
 
-                    stream.write(packet.to_bytes().as_slice()).await.unwrap();
+                    stream.write(packet.to_vec().as_slice()).await.unwrap();
                     stream.flush().await.unwrap();
                 }
                 0x57 => {
@@ -440,7 +440,7 @@ async fn handle_game_stream(mut stream: TcpStream) {
 
                     packet.xor_encrypt(&mut xor);
 
-                    stream.write(packet.to_bytes().as_slice()).await.unwrap();
+                    stream.write(packet.to_vec().as_slice()).await.unwrap();
                     stream.flush().await.unwrap();
 
                     let mut packet = SendablePacket::new();
@@ -506,7 +506,7 @@ async fn handle_game_stream(mut stream: TcpStream) {
 
                     packet.xor_encrypt(&mut xor);
 
-                    stream.write(packet.to_bytes().as_slice()).await.unwrap();
+                    stream.write(packet.to_vec().as_slice()).await.unwrap();
                     stream.flush().await.unwrap()
                 }
                 0x48 => {
@@ -523,7 +523,7 @@ async fn handle_game_stream(mut stream: TcpStream) {
 
                     packet.xor_encrypt(&mut xor);
 
-                    stream.write(packet.to_bytes().as_slice()).await.unwrap();
+                    stream.write(packet.to_vec().as_slice()).await.unwrap();
                     stream.flush().await.unwrap();
                 }
                 0x6c => {
@@ -537,7 +537,7 @@ async fn handle_game_stream(mut stream: TcpStream) {
 
                     packet.xor_encrypt(&mut xor);
 
-                    stream.write(packet.to_bytes().as_slice()).await.unwrap();
+                    stream.write(packet.to_vec().as_slice()).await.unwrap();
                     stream.flush().await.unwrap();
                 }
                 packet => {

@@ -1,11 +1,7 @@
-use loginserver::packet::client::{decrypt_packet, FromDecryptedPacket};
-use shared::extcrypto::blowfish::Blowfish;
 use shared::network::channel::channel_connection::{connect, ChannelConnector};
 use shared::network::channel::channel_stream::ChannelStream;
-use shared::network::packet::sendable::SendablePacketOutput;
 use shared::network::stream::Streamable;
 use shared::network::{read_packet, send_packet};
-use shared::structs::session::Session;
 use shared::tokio::net::{TcpStream, ToSocketAddrs};
 
 pub struct Client<T>
@@ -42,25 +38,14 @@ where
         &self.bytes
     }
 
-    pub async fn read_packet<P>(&mut self, blowfish: &Blowfish) -> P
-    where
-        P: FromDecryptedPacket,
-    {
+    pub async fn read_packet(&mut self) -> Vec<u8> {
         let packet = read_packet(&mut self.connection).await.unwrap();
-        let decrypted_packet = decrypt_packet(packet, &blowfish);
-        self.bytes = decrypted_packet.clone();
+        self.bytes = packet.clone();
 
-        P::from_decrypted_packet(decrypted_packet)
+        packet
     }
 
-    pub async fn send_packet(
-        &mut self,
-        packet: SendablePacketOutput,
-        blowfish: &Blowfish,
-        session: &Session,
-    ) {
-        send_packet(&mut self.connection, packet, blowfish, session)
-            .await
-            .unwrap();
+    pub async fn send_packet(&mut self, packet: Vec<u8>) {
+        send_packet(&mut self.connection, packet).await.unwrap();
     }
 }

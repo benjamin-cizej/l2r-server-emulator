@@ -1,3 +1,5 @@
+use num::ToPrimitive;
+
 pub mod receivable;
 pub mod sendable;
 
@@ -16,4 +18,10 @@ pub fn swap32(block: &[u8]) -> [u8; 8] {
     }
 
     output
+}
+
+pub fn prepend_length(packet: &mut Vec<u8>) {
+    let length = (packet.len() + 2).to_u16().unwrap().to_le_bytes();
+
+    packet.splice(0..0, length);
 }

@@ -1,8 +1,9 @@
 use crate::packet::client::FromDecryptedPacket;
-use shared::extcrypto::blowfish::Blowfish;
+use crate::packet::server::ServerPacketBytes;
 use shared::network::packet::receivable::ReceivablePacket;
-use shared::network::packet::sendable::{SendablePacket, SendablePacketBytes};
-use shared::structs::session::Session;
+use shared::network::packet::sendable::SendablePacket;
+use shared::structs::session::{ClientSession, ServerSession};
+use shared::tokio::io;
 
 pub struct GGAuthPacket {
     pub session_id: i32,
@@ -14,29 +15,28 @@ impl GGAuthPacket {
     }
 }
 
-impl SendablePacketBytes for GGAuthPacket {
-    fn to_bytes(&self, blowfish: &Blowfish, session: &Session) -> Vec<u8> {
+impl ServerPacketBytes for GGAuthPacket {
+    fn to_bytes(&self, _: Option<&ServerSession>) -> io::Result<Vec<u8>> {
         let mut packet = SendablePacket::new();
         packet.write_uint8(0x0b);
-        packet.write_int32(session.session_id);
+        packet.write_int32(self.session_id);
         packet.write_int32(0);
         packet.write_int32(0);
         packet.write_int32(0);
         packet.write_int32(0);
         packet.pad_bits();
         packet.add_checksum();
-        packet.blowfish_encrypt(blowfish);
 
-        packet.to_bytes()
+        Ok(packet.to_vec())
     }
 }
 
 impl FromDecryptedPacket for GGAuthPacket {
-    fn from_decrypted_packet(packet: Vec<u8>) -> Self {
+    fn from_decrypted_packet(packet: Vec<u8>, _: Option<&ClientSession>) -> io::Result<Self> {
         let mut packet = ReceivablePacket::new(packet);
-        packet.read_uint8().unwrap();
-        let session_id = packet.read_int32().unwrap();
+        packet.read_uint8()?;
+        let session_id = packet.read_int32()?;
 
-        GGAuthPacket { session_id }
+        Ok(GGAuthPacket { session_id })
     }
 }

@@ -15,8 +15,7 @@ fn it_auth_encrypts() {
         162, 52, 59, 59, 166, 97, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
     ]);
     packet.auth_encypher(-1866898459);
-    let bytes = packet.to_bytes();
-    let (_, result) = bytes.split_at(2);
+    let bytes = packet.to_vec();
 
     let expected: Vec<u8> = vec![
         0, 118, 138, 89, 239, 165, 185, 145, 234, 140, 129, 114, 54, 59, 29, 30, 112, 211, 231,
@@ -31,5 +30,5 @@ fn it_auth_encrypts() {
         75, 191, 180, 85, 75, 191, 180, 0, 0, 0, 0,
     ];
 
-    assert_eq!(expected, result.to_vec());
+    assert_eq!(expected, bytes);
 }

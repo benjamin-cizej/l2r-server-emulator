@@ -1,11 +1,7 @@
 use crate::crypto::xor::Xor;
-use crate::network::packet::swap32;
 use bytes::{Buf, Bytes};
-use extcrypto::blowfish::Blowfish;
-use extcrypto::symmetriccipher::BlockEncryptor;
 use num::ToPrimitive;
 use std::io::{BufRead, Read};
-use crate::structs::session::Session;
 
 pub struct SendablePacket {
     buffer: Vec<u8>,
@@ -84,18 +80,6 @@ impl SendablePacket {
         self.buffer[pos..pos + 4].copy_from_slice(&ecx.to_le_bytes());
     }
 
-    pub fn blowfish_encrypt(&mut self, blowfish: &Blowfish) {
-        let mut encrypted_stream: Vec<u8> = vec![];
-        for i in self.buffer.chunks(8) {
-            let mut enc_buffer = [0u8; 8];
-            let mut input = swap32(i);
-            blowfish.encrypt_block(&mut input, &mut enc_buffer);
-            encrypted_stream.append(&mut Vec::from(swap32(&mut enc_buffer)));
-        }
-
-        self.buffer = encrypted_stream;
-    }
-
     pub fn pad_bits(&mut self) {
         let size = self.buffer.len().to_i32().unwrap();
         let buffer_size = ((num::integer::div_ceil(size, 4) * 4) - size)
@@ -127,16 +111,7 @@ impl SendablePacket {
         self.buffer = xor.encrypt(self.buffer.clone());
     }
 
-    pub fn to_bytes(self) -> Vec<u8> {
-        let length = (self.len() + 2).to_u16().unwrap().to_le_bytes();
-        let output = Vec::from([&length, self.buffer.as_slice()].concat());
-
-        output
+    pub fn to_vec(self) -> Vec<u8> {
+        self.buffer
     }
-}
-
-pub type SendablePacketOutput = Box<dyn SendablePacketBytes + Send>;
-
-pub trait SendablePacketBytes {
-    fn to_bytes(&self, blowfish: &Blowfish, session: &Session) -> Vec<u8>;
 }
