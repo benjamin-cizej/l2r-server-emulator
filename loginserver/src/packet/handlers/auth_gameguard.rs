@@ -32,7 +32,7 @@ pub async fn handle_gameguard_auth(
         None | Some(_) => {
             return Err(Error::new(
                 InvalidData,
-                "Did not receive AuthGameGuard packet",
+                "Did not receive AuthGameGuard packet.",
             ));
         }
     };

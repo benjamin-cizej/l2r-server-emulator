@@ -9,6 +9,7 @@ use shared::network::packet::prepend_length;
 use shared::network::read_packet;
 use shared::structs::session::ServerSession;
 use shared::tokio;
+use std::io::ErrorKind::{ConnectionAborted, InvalidData};
 use std::net::SocketAddr;
 use std::str::FromStr;
 use tests::mocks::stream::MockStream;
@@ -18,9 +19,10 @@ async fn it_returns_error_on_closed_connection() {
     let mut stream = MockStream::new(vec![]);
     let session = ServerSession::new(SocketAddr::from_str("127.0.0.1:0").unwrap());
 
-    handle_gameguard_auth(&mut stream, &session)
+    let error = handle_gameguard_auth(&mut stream, &session)
         .await
         .unwrap_err();
+    assert_eq!(ConnectionAborted, error.kind());
 }
 
 #[tokio::test]
@@ -29,9 +31,11 @@ async fn it_returns_error_on_invalid_packet_received() {
     let mut stream = MockStream::new(buffer);
     let session = ServerSession::new(SocketAddr::from_str("127.0.0.1:0").unwrap());
 
-    handle_gameguard_auth(&mut stream, &session)
+    let error = handle_gameguard_auth(&mut stream, &session)
         .await
         .unwrap_err();
+    assert_eq!(InvalidData, error.kind());
+    assert_eq!("Did not receive AuthGameGuard packet.", error.to_string());
 }
 
 #[tokio::test]
@@ -44,9 +48,11 @@ async fn it_returns_error_on_session_id_mismatch() {
     prepend_length(&mut packet);
 
     let mut stream = MockStream::new(packet);
-    handle_gameguard_auth(&mut stream, &session)
+    let error = handle_gameguard_auth(&mut stream, &session)
         .await
         .unwrap_err();
+    assert_eq!(InvalidData, error.kind());
+    assert_eq!("Session mismatch detected.", error.to_string());
 
     let mut packet = read_packet(&mut stream).await.unwrap();
     decrypt_packet(&mut packet, &Blowfish::new(&session.blowfish_key));
