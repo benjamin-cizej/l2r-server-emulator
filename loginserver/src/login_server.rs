@@ -25,13 +25,11 @@ pub enum MessageAction {
     Disconnect,
 }
 
-pub type AccountsList = Arc<Mutex<HashMap<String, Sender<(MessageAction, Vec<u8>)>>>>;
+pub type AccountsList = Arc<Mutex<HashMap<String, Sender<MessageAction>>>>;
 
 pub async fn start_server(mut listener: impl Acceptable) -> Result<()> {
-    let clients: AccountsList = Arc::new(Mutex::new(HashMap::<
-        String,
-        Sender<(MessageAction, Vec<u8>)>,
-    >::new()));
+    let clients: AccountsList =
+        Arc::new(Mutex::new(HashMap::<String, Sender<MessageAction>>::new()));
 
     loop {
         let (stream, addr) = match listener.accept_connection().await {
@@ -42,20 +40,18 @@ pub async fn start_server(mut listener: impl Acceptable) -> Result<()> {
             Ok((stream, addr)) => (stream, addr),
         };
 
-        let (client_tx, _) = broadcast::channel::<(MessageAction, Vec<u8>)>(10);
+        let (client_tx, _) = broadcast::channel::<MessageAction>(10);
 
         println!("Connection established from {:?}", addr);
         let cloned_clients = clients.clone();
-        tokio::spawn(async move {
-            handle_stream(stream, addr, client_tx.clone(), cloned_clients).await
-        });
+        tokio::spawn(async move { handle_stream(stream, addr, client_tx, cloned_clients).await });
     }
 }
 
 async fn handle_stream(
     mut stream: impl Streamable,
     addr: SocketAddr,
-    sender: Sender<(MessageAction, Vec<u8>)>,
+    sender: Sender<MessageAction>,
     clients: AccountsList,
 ) {
     let session = ServerSession::new(addr);
@@ -120,7 +116,7 @@ async fn handle_stream(
             }
             result = receiver.recv() => {
                 match &result {
-                    Ok((action, _)) => {
+                    Ok(action) => {
                         match action {
                             MessageAction::Disconnect => {
                                 let mut packet = LoginFailPacket::new(LoginFailReason::AccountInUse).to_bytes(None).unwrap();

@@ -22,10 +22,8 @@ use tests::mocks::stream::MockStream;
 async fn it_returns_error_on_closed_connection() {
     let mut stream = MockStream::new(vec![]);
     let session = ServerSession::new(SocketAddr::from_str("127.0.0.1:0").unwrap());
-    let clients: AccountsList = Arc::new(Mutex::new(HashMap::<
-        String,
-        Sender<(MessageAction, Vec<u8>)>,
-    >::new()));
+    let clients: AccountsList =
+        Arc::new(Mutex::new(HashMap::<String, Sender<MessageAction>>::new()));
 
     let error = handle_login_credentials(&mut stream, &session, &clients)
         .await
@@ -39,10 +37,8 @@ async fn it_returns_error_on_invalid_packet_received() {
     prepend_length(&mut buffer);
     let mut stream = MockStream::new(buffer);
     let session = ServerSession::new(SocketAddr::from_str("127.0.0.1:0").unwrap());
-    let clients: AccountsList = Arc::new(Mutex::new(HashMap::<
-        String,
-        Sender<(MessageAction, Vec<u8>)>,
-    >::new()));
+    let clients: AccountsList =
+        Arc::new(Mutex::new(HashMap::<String, Sender<MessageAction>>::new()));
 
     let error = handle_login_credentials(&mut stream, &session, &clients)
         .await
@@ -56,10 +52,8 @@ async fn it_returns_error_on_invalid_packet_received() {
 
 #[tokio::test]
 async fn it_returns_error_on_session_id_mismatch() {
-    let clients: AccountsList = Arc::new(Mutex::new(HashMap::<
-        String,
-        Sender<(MessageAction, Vec<u8>)>,
-    >::new()));
+    let clients: AccountsList =
+        Arc::new(Mutex::new(HashMap::<String, Sender<MessageAction>>::new()));
     let server_session = ServerSession::new(SocketAddr::from_str("127.0.0.1:0").unwrap());
     let client_session = server_session.clone().to_client_session();
     let mut packet = RequestAuthLoginPacket::new(

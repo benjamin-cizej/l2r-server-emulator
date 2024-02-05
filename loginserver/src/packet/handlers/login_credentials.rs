@@ -54,9 +54,7 @@ async fn verify_auth(
     match accounts.lock().await.get(&account) {
         Some(sender) => {
             let packet = LoginFailPacket::new(LoginFailReason::AccountInUse).to_bytes(None)?;
-            sender
-                .send((MessageAction::Disconnect, packet.clone()))
-                .unwrap();
+            sender.send(MessageAction::Disconnect).unwrap();
             Ok((packet, Err(Error::from(AlreadyExists))))
         }
         None => {
