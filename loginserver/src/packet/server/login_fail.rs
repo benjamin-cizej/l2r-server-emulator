@@ -1,5 +1,5 @@
 use crate::packet::client::FromDecryptedPacket;
-use crate::packet::server::login_fail::LoginFailReason::{AccessFailed, AccountInUse, Unknown};
+use crate::packet::server::login_fail::LoginFailReason::{AccessFailed, AccountInUse, Unknown, UserOrPassWrong};
 use crate::packet::server::ServerPacketBytes;
 use shared::network::packet::receivable::ReceivablePacket;
 use shared::network::packet::sendable::SendablePacket;
@@ -11,6 +11,7 @@ pub enum LoginFailReason {
     AccountInUse,
     AccessFailed,
     Unknown,
+    UserOrPassWrong,
 }
 
 impl LoginFailReason {
@@ -18,12 +19,14 @@ impl LoginFailReason {
         match self {
             AccountInUse => 0x07,
             AccessFailed => 0x15,
+            UserOrPassWrong => 0x02,
             Unknown => 0,
         }
     }
 
     pub fn from_opcode(opcode: u8) -> Self {
         match opcode {
+            0x02 => UserOrPassWrong,
             0x07 => AccountInUse,
             0x15 => AccessFailed,
             _ => Unknown,

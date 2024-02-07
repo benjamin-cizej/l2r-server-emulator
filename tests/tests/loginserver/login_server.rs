@@ -5,6 +5,7 @@ use loginserver::packet::client::{
 };
 use loginserver::packet::server::login_fail::{LoginFailPacket, LoginFailReason};
 use loginserver::packet::server::{GGAuthPacket, InitPacket, LoginOkPacket};
+use loginserver::repository::memory::account::MemoryAccountRepository;
 use shared::crypto::blowfish::{decrypt_packet, encrypt_packet, StaticL2Blowfish};
 use shared::extcrypto::blowfish::Blowfish;
 use shared::network::channel::channel_connection::ChannelConnector;
@@ -22,8 +23,9 @@ use std::str::FromStr;
 async fn it_connects_with_tcp() {
     // Start server via TcpListener.
     let listener = TcpListener::bind("127.0.0.1:2106").await.unwrap();
+    let storage = MemoryAccountRepository::new();
     let handle = tokio::spawn(async move {
-        login_server::start_server(listener).await.unwrap();
+        login_server::start_server(listener, storage).await.unwrap();
     });
 
     // Client connects successfully via TcpStream.
@@ -141,8 +143,9 @@ async fn it_disconnects_both_clients_with_same_account() {
 async fn start_channel_server() -> (ChannelConnector, AbortHandle) {
     let listener = ChannelListener::new();
     let connector = listener.get_connector();
+    let storage = MemoryAccountRepository::new();
     let handle = tokio::spawn(async move {
-        login_server::start_server(listener).await.unwrap();
+        login_server::start_server(listener, storage).await.unwrap();
     });
 
     (connector, handle.abort_handle())

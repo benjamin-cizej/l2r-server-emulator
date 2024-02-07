@@ -2,6 +2,7 @@ use crate::packet::handlers::auth_gameguard::handle_gameguard_auth;
 use crate::packet::handlers::login_credentials::handle_login_credentials;
 use crate::packet::server::login_fail::{LoginFailPacket, LoginFailReason};
 use crate::packet::server::{handle_packet, InitPacket, ServerPacketBytes};
+use crate::repository::account::AccountRepository;
 use shared::crypto::blowfish::{encrypt_packet, StaticL2Blowfish};
 use shared::extcrypto::blowfish::Blowfish;
 use shared::network::listener::Acceptable;
@@ -27,9 +28,13 @@ pub enum MessageAction {
 
 pub type AccountsList = Arc<Mutex<HashMap<String, Sender<MessageAction>>>>;
 
-pub async fn start_server(mut listener: impl Acceptable) -> Result<()> {
+pub async fn start_server(
+    mut listener: impl Acceptable,
+    repository: impl AccountRepository,
+) -> Result<()> {
     let clients: AccountsList =
         Arc::new(Mutex::new(HashMap::<String, Sender<MessageAction>>::new()));
+    let repository = Arc::new(Mutex::new(repository));
 
     loop {
         let (stream, addr) = match listener.accept_connection().await {
@@ -44,7 +49,10 @@ pub async fn start_server(mut listener: impl Acceptable) -> Result<()> {
 
         println!("Connection established from {:?}", addr);
         let cloned_clients = clients.clone();
-        tokio::spawn(async move { handle_stream(stream, addr, client_tx, cloned_clients).await });
+        let cloned_repo = repository.clone();
+        tokio::spawn(async move {
+            handle_stream(stream, addr, client_tx, cloned_clients, cloned_repo).await
+        });
     }
 }
 
@@ -53,6 +61,7 @@ async fn handle_stream(
     addr: SocketAddr,
     sender: Sender<MessageAction>,
     clients: AccountsList,
+    repository: Arc<Mutex<impl AccountRepository>>,
 ) {
     let session = ServerSession::new(addr);
     let mut packet = InitPacket::new(&session).to_bytes(None).unwrap();
@@ -67,7 +76,8 @@ async fn handle_stream(
         return;
     }
 
-    let account = match handle_login_credentials(&mut stream, &session, &clients).await {
+    let account = match handle_login_credentials(&mut stream, &session, &clients, &repository).await
+    {
         Ok(account) => account,
         Err(e) => match e.kind() {
             AlreadyExists => {

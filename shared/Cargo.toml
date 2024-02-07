@@ -15,3 +15,5 @@ rsa = { version = "0.8.2", features = ["expose-internals"] }
 rust-crypto = "0.2.36"
 ucs2 = "0.3.2"
 tokio = { version = "1", features = ["full"] }
+chrono = "0.4.33"
+pwhash = "1.0.0"
