@@ -45,7 +45,7 @@ impl FromDecryptedPacket for RequestAuthLoginPacket {
             Some(session) => session,
             None => return Err(io::Error::new(Other, "Session must be provided.")),
         };
-        
+
         let credentials = match packet.get(1..129) {
             Some(result) => result,
             None => {

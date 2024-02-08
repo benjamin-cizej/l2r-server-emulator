@@ -1,5 +1,7 @@
 use crate::packet::client::FromDecryptedPacket;
-use crate::packet::server::login_fail::LoginFailReason::{AccessFailed, AccountInUse, Unknown, UserOrPassWrong};
+use crate::packet::server::login_fail::LoginFailReason::{
+    AccessFailed, AccountInUse, Unknown, UserOrPassWrong,
+};
 use crate::packet::server::ServerPacketBytes;
 use shared::network::packet::receivable::ReceivablePacket;
 use shared::network::packet::sendable::SendablePacket;
