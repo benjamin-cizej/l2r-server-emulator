@@ -19,10 +19,13 @@ use std::str::FromStr;
 #[tokio::test]
 async fn it_connects_with_tcp() {
     // Start server via TcpListener.
-    let listener = TcpListener::bind("127.0.0.1:2106").await.unwrap();
+    let client_listener = TcpListener::bind("127.0.0.1:2106").await.unwrap();
+    let gameserver_listener = TcpListener::bind("127.0.0.1:6001").await.unwrap();
     let storage = InMemoryAccountRepository::new();
     let handle = tokio::spawn(async move {
-        login_server::start_server(listener, storage).await.unwrap();
+        login_server::start_server(client_listener, gameserver_listener, storage)
+            .await
+            .unwrap();
     });
 
     // Client connects successfully via TcpStream.
@@ -37,7 +40,7 @@ async fn it_connects_with_tcp() {
 #[tokio::test]
 async fn it_connects_with_channel() {
     // Start server via Mpsc channel.
-    let (mut connector, handle) = start_channel_server().await;
+    let (mut connector, _, handle) = start_channel_server().await;
 
     // Clients connects successfully via channel.
     let mut client = Client::<ChannelStream>::connect_channel(&mut connector).await;
@@ -50,7 +53,7 @@ async fn it_connects_with_channel() {
 
 #[tokio::test]
 async fn it_sends_init_packet_on_connection() {
-    let (mut connector, handle) = start_channel_server().await;
+    let (mut connector, _, handle) = start_channel_server().await;
     let mut client = Client::<ChannelStream>::connect_channel(&mut connector).await;
 
     // Read the packet and verify content is correct.
@@ -67,7 +70,7 @@ async fn it_sends_init_packet_on_connection() {
 
 #[tokio::test]
 async fn it_sends_gg_auth_packet_on_request() {
-    let (mut connector, handle) = start_channel_server().await;
+    let (mut connector, _, handle) = start_channel_server().await;
     let mut client = Client::<ChannelStream>::connect_channel(&mut connector).await;
     client
         .read_init_packet(SocketAddr::from_str("127.0.0.1:0").unwrap())
@@ -89,7 +92,7 @@ async fn it_sends_gg_auth_packet_on_request() {
 
 #[tokio::test]
 async fn it_disconnects_both_clients_with_same_account() {
-    let (mut connector, handle) = start_channel_server().await;
+    let (mut connector, _, handle) = start_channel_server().await;
 
     // Connect two clients with the server.
     let mut client1 = Client::<ChannelStream>::connect_channel(&mut connector).await;
@@ -119,15 +122,23 @@ async fn it_disconnects_both_clients_with_same_account() {
     handle.abort();
 }
 
-async fn start_channel_server() -> (ChannelConnector, AbortHandle) {
-    let listener = ChannelListener::new();
-    let connector = listener.get_connector();
+async fn start_channel_server() -> (ChannelConnector, ChannelConnector, AbortHandle) {
+    let client_listener = ChannelListener::new();
+    let gameserver_listener = ChannelListener::new();
+    let client_connector = client_listener.get_connector();
+    let gameserver_connector = gameserver_listener.get_connector();
     let storage = InMemoryAccountRepository::new();
     let handle = tokio::spawn(async move {
-        login_server::start_server(listener, storage).await.unwrap();
+        login_server::start_server(client_listener, gameserver_listener, storage)
+            .await
+            .unwrap();
     });
 
-    (connector, handle.abort_handle())
+    (
+        client_connector,
+        gameserver_connector,
+        handle.abort_handle(),
+    )
 }
 
 async fn login_client<T: Streamable>(client: &mut Client<T>, username: String, password: String) {

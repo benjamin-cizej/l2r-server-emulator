@@ -1,3 +1,5 @@
+use crate::packet::gameserver;
+use crate::packet::gameserver::FromDecryptedPacket;
 use crate::packet::handlers::auth_gameguard::handle_gameguard_auth;
 use crate::packet::handlers::login_credentials::handle_login_credentials;
 use crate::packet::server::login_fail::{LoginFailPacket, LoginFailReason};
@@ -5,11 +7,11 @@ use crate::packet::server::{handle_packet, InitPacket, ServerPacketBytes};
 use crate::repository::account::AccountRepository;
 use crate::structs::connected_client::ConnectionState::Disconnected;
 use crate::structs::connected_client::{ConnectedClient, LoginClientPackets};
-use shared::crypto::blowfish::{encrypt_packet, StaticL2Blowfish};
+use shared::crypto::blowfish::{decrypt_packet, encrypt_packet, StaticL2Blowfish};
 use shared::extcrypto::blowfish::Blowfish;
 use shared::network::listener::Acceptable;
-use shared::network::send_packet;
 use shared::network::stream::Streamable;
+use shared::network::{read_packet, send_packet};
 use shared::tokio;
 use shared::tokio::select;
 use shared::tokio::sync::broadcast::Sender;
@@ -27,33 +29,88 @@ pub enum MessageAction {
 }
 
 pub type ConnectedAccounts = Arc<Mutex<HashMap<String, Sender<MessageAction>>>>;
+pub type ConnectedGameServers = Arc<Mutex<HashMap<u8, String>>>;
 
 pub async fn start_server(
-    mut listener: impl Acceptable,
+    mut client_listener: impl Acceptable,
+    mut gameserver_listener: impl Acceptable,
     repository: impl AccountRepository,
 ) -> Result<()> {
     let connected_accounts: ConnectedAccounts = Arc::new(Mutex::new(HashMap::new()));
+    let connected_gameservers: ConnectedGameServers = Arc::new(Mutex::new(HashMap::new()));
     let repository = Arc::new(Mutex::new(repository));
 
     loop {
-        let (stream, addr) = match listener.accept_connection().await {
-            Err(e) => {
-                println!("Connection could not be established: {:?}", e);
-                continue;
-            }
-            Ok((stream, addr)) => (stream, addr),
-        };
-        let client = ConnectedClient::new(stream, addr);
-        println!("Connection established from {:?}", addr);
-
-        let (tx, _) = broadcast::channel::<MessageAction>(10);
-        let cloned_list = connected_accounts.clone();
-        let cloned_repo = repository.clone();
-        tokio::spawn(async move { handle_stream(client, tx, cloned_list, cloned_repo).await });
+        select! {
+            _ = handle_client_connections(&mut client_listener, &connected_accounts, &repository) => {},
+            _ = handle_gameserver_connections(&mut gameserver_listener, connected_gameservers.clone()) => {}
+        }
     }
 }
 
-async fn handle_stream(
+async fn handle_gameserver_connections(
+    listener: &mut impl Acceptable,
+    gameservers: ConnectedGameServers,
+) {
+    let (mut stream, addr) = match listener.accept_connection().await {
+        Err(e) => {
+            println!("Connection could not be established: {:?}", e);
+            return;
+        }
+        Ok((stream, addr)) => (stream, addr),
+    };
+    println!("New gameserver connection from {:?}", addr);
+
+    let blowfish = Blowfish::new_static();
+    let mut packet = read_packet(&mut stream).await.unwrap();
+    decrypt_packet(&mut packet, &blowfish);
+    let packet = gameserver::InitPacket::from_decrypted_packet(packet).unwrap();
+    if packet.auth_key != "test_auth_key".to_string() {
+        println!("Invalid auth key. Disconnecting...");
+        return;
+    }
+
+    {
+        let id = packet.id.clone();
+        let mut lock = gameservers.lock().await;
+        match lock.get(&id) {
+            None => {
+                let name = packet.name.clone();
+                lock.insert(id, name);
+            }
+            Some(_) => {
+                println!(
+                    "Gameserver with the id {} is already registered. Disconnecting...",
+                    id
+                );
+                return;
+            }
+        };
+    }
+}
+
+async fn handle_client_connections(
+    listener: &mut impl Acceptable,
+    connected_accounts: &ConnectedAccounts,
+    repository: &Arc<Mutex<impl AccountRepository + Sized>>,
+) {
+    let (stream, addr) = match listener.accept_connection().await {
+        Err(e) => {
+            println!("Connection could not be established: {:?}", e);
+            return;
+        }
+        Ok((stream, addr)) => (stream, addr),
+    };
+    let client = ConnectedClient::new(stream, addr);
+    println!("Connection established from {:?}", addr);
+
+    let (tx, _) = broadcast::channel::<MessageAction>(10);
+    let cloned_list = connected_accounts.clone();
+    let cloned_repo = repository.clone();
+    tokio::spawn(async move { handle_client_stream(client, tx, cloned_list, cloned_repo).await });
+}
+
+async fn handle_client_stream(
     mut client: ConnectedClient<impl Streamable>,
     sender: Sender<MessageAction>,
     connected_accounts: ConnectedAccounts,
