@@ -3,6 +3,7 @@ use crate::packet::handlers::login_credentials::handle_login_credentials;
 use crate::packet::server::login_fail::{LoginFailPacket, LoginFailReason};
 use crate::packet::server::{handle_packet, InitPacket, ServerPacketBytes};
 use crate::repository::account::AccountRepository;
+use crate::structs::connected_client::ConnectionState::Disconnected;
 use crate::structs::connected_client::{ConnectedClient, LoginClientPackets};
 use shared::crypto::blowfish::{encrypt_packet, StaticL2Blowfish};
 use shared::extcrypto::blowfish::Blowfish;
@@ -61,11 +62,13 @@ async fn handle_stream(
     let mut packet = InitPacket::new(&client.session).to_bytes(None).unwrap();
     encrypt_packet(&mut packet, &Blowfish::new_static());
     if let Err(e) = send_packet(&mut client.stream, packet).await {
+        client.state = Disconnected;
         println!("Error sending initial packet: {:?}", e);
         return;
     }
 
     if let Err(e) = handle_gameguard_auth(&mut client).await {
+        client.state = Disconnected;
         println!("Error handling gameguard packet: {:?}", e);
         return;
     }
@@ -73,17 +76,20 @@ async fn handle_stream(
     let account =
         match handle_login_credentials(&mut client, &connected_accounts, &repository).await {
             Ok(account) => account,
-            Err(e) => match e.kind() {
-                AlreadyExists => {
-                    println!("Account with that username is already connected");
-                    println!("Connection terminated for {}", client.session.addr);
-                    return;
+            Err(e) => {
+                client.state = Disconnected;
+                match e.kind() {
+                    AlreadyExists => {
+                        println!("Account with that username is already connected");
+                        println!("Connection terminated for {}", client.session.addr);
+                        return;
+                    }
+                    _ => {
+                        println!("Error handling login credentials: {:?}", e);
+                        return;
+                    }
                 }
-                _ => {
-                    println!("Error handling login credentials: {:?}", e);
-                    return;
-                }
-            },
+            }
         };
 
     println!("Account {} connected", account);
@@ -106,11 +112,13 @@ async fn handle_stream(
                         ConnectionAborted => {
                             connected_accounts.lock().await.remove(&account);
                             println!("Connection closed from {:?}", client.session.addr);
+                            client.state = Disconnected;
                             return;
                         }
                         _ => {
                             connected_accounts.lock().await.remove(&account);
                             println!("Connection terminated with an error: {:?}", e);
+                            client.state = Disconnected;
                             return;
                         }
                     }
@@ -125,6 +133,7 @@ async fn handle_stream(
                                 client.send_packet(packet).await.unwrap();
                                 println!("Connection terminated for {:?}", client.session.addr);
                                 connected_accounts.lock().await.remove(&account);
+                                client.state = Disconnected;
                                 return;
                             },
                         }

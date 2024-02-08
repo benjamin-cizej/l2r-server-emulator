@@ -15,8 +15,7 @@ pub enum ConnectionState {
     GameGuardAuthorization,
     GameGuardAuthorized,
     CredentialsAuthorization,
-    LoginSuccess,
-    LoginFailure,
+    Authorized,
     Disconnected,
 }
 

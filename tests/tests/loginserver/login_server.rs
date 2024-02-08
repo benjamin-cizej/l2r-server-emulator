@@ -98,9 +98,7 @@ async fn it_disconnects_both_clients_with_same_account() {
     // Client 1 logs in successfully.
     login_client(&mut client1, String::from("test"), String::from("test")).await;
     let packet = client1.read_packet().await.unwrap();
-    let packet = LoginOkPacket::from_decrypted_packet(packet, None).unwrap();
-    assert_eq!(0, packet.login_ok1);
-    assert_eq!(0, packet.login_ok2);
+    LoginOkPacket::from_decrypted_packet(packet, None).unwrap();
 
     // Client 2 tries to log in with the same credentials.
     login_client(&mut client2, String::from("test"), String::from("test")).await;

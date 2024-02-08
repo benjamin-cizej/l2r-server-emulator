@@ -6,6 +6,7 @@ pub use login_ok::LoginOkPacket;
 pub use play_ok::PlayOkPacket;
 pub use server_list::ServerListPacket;
 use shared::network::stream::Streamable;
+use shared::rand::{thread_rng, Rng};
 use shared::structs::server::Server;
 use shared::structs::session::ServerSession;
 use std::io;
@@ -39,7 +40,10 @@ pub async fn handle_packet(client: &mut ConnectedClient<impl Streamable>) -> io:
     };
 
     let matched_packet: ServerPacketOutput = match packet_type {
-        PacketTypeEnum::RequestAuthLogin => Box::new(LoginOkPacket::new(0, 0)),
+        PacketTypeEnum::RequestAuthLogin => {
+            let mut rnd = thread_rng();
+            Box::new(LoginOkPacket::new(rnd.gen(), rnd.gen()))
+        }
         PacketTypeEnum::AuthGameGuard => {
             let packet = AuthGameGuardPacket::from_decrypted_packet(packet, None)?;
             let packet = GGAuthPacket::new(packet.get_session_id());
@@ -62,7 +66,10 @@ pub async fn handle_packet(client: &mut ConnectedClient<impl Streamable>) -> io:
 
             Box::new(packet)
         }
-        PacketTypeEnum::RequestServerLogin => Box::new(PlayOkPacket::new(0, 0)),
+        PacketTypeEnum::RequestServerLogin => {
+            let mut rnd = thread_rng();
+            Box::new(PlayOkPacket::new(rnd.gen(), rnd.gen()))
+        }
     };
 
     client.send_packet(matched_packet).await?;
