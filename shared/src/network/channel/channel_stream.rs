@@ -20,6 +20,16 @@ impl ChannelStream {
             buffer: vec![],
         }
     }
+
+    pub fn new_connected_pair() -> (Self, Self) {
+        let (tx1, rx1) = tokio::sync::mpsc::channel::<Vec<u8>>(10);
+        let (tx2, rx2) = tokio::sync::mpsc::channel::<Vec<u8>>(10);
+
+        let stream1 = ChannelStream::new(tx1, rx2);
+        let stream2 = ChannelStream::new(tx2, rx1);
+
+        (stream1, stream2)
+    }
 }
 
 impl Streamable for ChannelStream {

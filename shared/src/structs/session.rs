@@ -34,6 +34,7 @@ impl ServerSession {
     }
 }
 
+#[derive(Clone)]
 pub struct ClientSession {
     pub addr: SocketAddr,
     pub session_id: i32,

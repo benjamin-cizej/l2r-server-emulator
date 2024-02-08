@@ -1,7 +1,7 @@
 use std::pin::Pin;
 use tokio::io;
 
-pub trait Streamable {
+pub trait Streamable: Send {
     fn send_bytes<'a>(
         &'a mut self,
         buf: &'a [u8],
