@@ -1,13 +1,11 @@
 use crate::packet::client::{AuthGameGuardPacket, PacketTypeEnum};
+use crate::structs::connected_client::{ConnectedClient, LoginClientPackets};
 pub use gg_auth::GGAuthPacket;
 pub use init::InitPacket;
 pub use login_ok::LoginOkPacket;
 pub use play_ok::PlayOkPacket;
 pub use server_list::ServerListPacket;
-use shared::crypto::blowfish::{decrypt_packet, encrypt_packet};
-use shared::extcrypto::blowfish::Blowfish;
 use shared::network::stream::Streamable;
-use shared::network::{read_packet, send_packet};
 use shared::structs::server::Server;
 use shared::structs::session::ServerSession;
 use std::io;
@@ -28,12 +26,8 @@ pub trait FromDecryptedPacket {
         Self: Sized;
 }
 
-pub async fn handle_packet(
-    stream: &mut impl Streamable,
-    session: &ServerSession,
-) -> io::Result<()> {
-    let mut packet = read_packet(stream).await?;
-    decrypt_packet(&mut packet, &Blowfish::new(&session.blowfish_key));
+pub async fn handle_packet(client: &mut ConnectedClient<impl Streamable>) -> io::Result<()> {
+    let packet = client.read_packet().await?;
     let packet_type = match PacketTypeEnum::from_packet(&packet) {
         None => {
             return Err(Error::new(
@@ -48,10 +42,7 @@ pub async fn handle_packet(
         PacketTypeEnum::RequestAuthLogin => Box::new(LoginOkPacket::new(0, 0)),
         PacketTypeEnum::AuthGameGuard => {
             let packet = AuthGameGuardPacket::from_decrypted_packet(packet, None)?;
-            let session_id = packet.get_session_id();
-            let mut packet = GGAuthPacket::new(session_id);
-            packet.session_id = session_id;
-
+            let packet = GGAuthPacket::new(packet.get_session_id());
             Box::new(packet)
         }
         PacketTypeEnum::ServerList => {
@@ -74,10 +65,7 @@ pub async fn handle_packet(
         PacketTypeEnum::RequestServerLogin => Box::new(PlayOkPacket::new(0, 0)),
     };
 
-    let mut packet = matched_packet.to_bytes(Some(&session))?;
-    encrypt_packet(&mut packet, &Blowfish::new(&session.blowfish_key));
-    send_packet(stream, packet).await?;
-
+    client.send_packet(matched_packet).await?;
     Ok(())
 }
 

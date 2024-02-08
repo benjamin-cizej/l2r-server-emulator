@@ -96,7 +96,7 @@ async fn handle_stream(
 
     loop {
         select! {
-            result = handle_packet(&mut client.stream, &client.session) => {
+            result = handle_packet(&mut client) => {
                 if let Err(e) = &result {
                     match e.kind() {
                         Unsupported => {
