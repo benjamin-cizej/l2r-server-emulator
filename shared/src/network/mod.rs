@@ -9,9 +9,9 @@ use num::ToPrimitive;
 pub mod channel;
 pub mod listener;
 pub mod packet;
+pub mod socket;
 pub mod stream;
 pub mod tcp;
-pub mod socket;
 
 pub async fn read_packet(stream: &mut impl Streamable) -> Result<Vec<u8>> {
     let mut len = [0u8; 2];

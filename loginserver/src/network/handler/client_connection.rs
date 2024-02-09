@@ -24,20 +24,22 @@ pub async fn handle_client_connections(
     connected_accounts: &ConnectedAccounts,
     repository: &Arc<Mutex<impl AccountRepository + Sized>>,
 ) {
-    let (stream, addr) = match listener.accept_connection().await {
-        Err(e) => {
-            println!("Connection with clieent could not be established: {:?}", e);
-            return;
-        }
-        Ok((stream, addr)) => (stream, addr),
-    };
-    let client = ConnectedClient::new(stream, addr);
-    println!("New client connection from {:?}", addr);
+    loop {
+        let (stream, addr) = match listener.accept_connection().await {
+            Err(e) => {
+                println!("Connection with clieent could not be established: {:?}", e);
+                return;
+            }
+            Ok((stream, addr)) => (stream, addr),
+        };
+        let client = ConnectedClient::new(stream, addr);
+        println!("New client connection from {:?}", addr);
 
-    let (tx, _) = broadcast::channel::<MessageAction>(10);
-    let cloned_list = connected_accounts.clone();
-    let cloned_repo = repository.clone();
-    tokio::spawn(async move { handle_connection(client, tx, cloned_list, cloned_repo).await });
+        let (tx, _) = broadcast::channel::<MessageAction>(10);
+        let cloned_list = connected_accounts.clone();
+        let cloned_repo = repository.clone();
+        tokio::spawn(async move { handle_connection(client, tx, cloned_list, cloned_repo).await });
+    }
 }
 
 async fn handle_connection(

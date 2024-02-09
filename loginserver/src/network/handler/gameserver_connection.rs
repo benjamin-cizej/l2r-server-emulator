@@ -13,18 +13,20 @@ pub async fn handle_gameserver_connections(
     listener: &mut impl Acceptable,
     gameservers: &ConnectedGameServers,
 ) {
-    let (stream, addr) = match listener.accept_connection().await {
-        Err(e) => {
-            println!("Connection with gameserver could not be established: {}", e);
-            return;
-        }
-        Ok((stream, addr)) => (stream, addr),
-    };
-    println!("New gameserver connection from {:?}", addr);
+    loop {
+        let (stream, addr) = match listener.accept_connection().await {
+            Err(e) => {
+                println!("Connection with gameserver could not be established: {}", e);
+                return;
+            }
+            Ok((stream, addr)) => (stream, addr),
+        };
+        println!("New gameserver connection from {:?}", addr);
 
-    let client = ConnectedGameServer::new(stream);
-    let gameservers_clone = gameservers.clone();
-    tokio::spawn(async move { handle_connection(client, gameservers_clone).await });
+        let client = ConnectedGameServer::new(stream);
+        let gameservers_clone = gameservers.clone();
+        tokio::spawn(async move { handle_connection(client, gameservers_clone).await });
+    }
 }
 
 async fn handle_connection(
@@ -74,7 +76,7 @@ async fn validate_connection(
     if packet[0] != 0x00 {
         return Err(io::Error::new(
             ErrorKind::InvalidData,
-            format!("Invalid packet received: {}", packet[0]),
+            format!("Invalid packet received: 0x{:02X?}", packet[0]),
         ));
     }
 

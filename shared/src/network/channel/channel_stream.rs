@@ -39,10 +39,10 @@ impl Streamable for ChannelStream {
     ) -> Pin<Box<dyn Future<Output = io::Result<()>> + Send + 'a>> {
         let bytes = buf.to_owned();
         Box::pin(async move {
-            return match self.tx.send(bytes).await {
+            match self.tx.send(bytes).await {
                 Err(_) => Err(io::Error::from(ConnectionReset)),
                 _ => Ok(()),
-            };
+            }
         })
     }
 

@@ -26,10 +26,10 @@ pub async fn start_server(
     let connected_gameservers: ConnectedGameServers = Arc::new(Mutex::new(HashMap::new()));
     let repository = Arc::new(Mutex::new(repository));
 
-    loop {
-        select! {
-            _ = handle_client_connections(&mut client_listener, &connected_accounts, &repository) => {},
-            _ = handle_gameserver_connections(&mut gameserver_listener, &connected_gameservers) => {}
-        }
+    select! {
+        _ = handle_client_connections(&mut client_listener, &connected_accounts, &repository) => {},
+        _ = handle_gameserver_connections(&mut gameserver_listener, &connected_gameservers) => {}
     }
+
+    Ok(())
 }

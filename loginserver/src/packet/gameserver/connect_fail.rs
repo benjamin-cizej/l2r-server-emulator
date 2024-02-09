@@ -2,7 +2,7 @@ use crate::packet::gameserver::{FromDecryptedPacket, ServerPacketBytes};
 use shared::network::packet::receivable::ReceivablePacket;
 use shared::network::packet::sendable::SendablePacket;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum ConnectFailReason {
     InvalidKey,
     AlreadyRegistered,
