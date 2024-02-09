@@ -9,7 +9,7 @@ use shared::tokio::net::TcpListener;
 async fn main() -> Result<(), Box<dyn Error>> {
     let client_listener = TcpListener::bind("127.0.0.1:2106").await?;
     let gameserver_listener = TcpListener::bind("127.0.0.1:6001").await?;
-    let storage = InMemoryAccountRepository::new();
+    let storage = InMemoryAccountRepository::default();
     start_server(client_listener, gameserver_listener, storage).await?;
 
     Ok(())

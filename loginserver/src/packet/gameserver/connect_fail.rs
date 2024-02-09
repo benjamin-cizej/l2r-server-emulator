@@ -48,7 +48,7 @@ impl FromDecryptedPacket for ConnectFailPacket {
 
 impl ServerPacketBytes for ConnectFailPacket {
     fn to_bytes(&self) -> std::io::Result<Vec<u8>> {
-        let mut packet = SendablePacket::new();
+        let mut packet = SendablePacket::default();
         packet.write_uint8(0x01);
         packet.write_uint8(ConnectFailReason::get_opcode(&self.reason));
         Ok(packet.to_vec())

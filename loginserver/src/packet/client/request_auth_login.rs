@@ -32,7 +32,7 @@ impl RequestAuthLoginPacket {
     }
 
     pub fn get_session_id(&self) -> i32 {
-        self.session_id.clone()
+        self.session_id
     }
 }
 
@@ -83,12 +83,10 @@ impl ClientPacketBytes for RequestAuthLoginPacket {
             None => return Err(io::Error::new(Other, "Session must be provided.")),
         };
 
-        let mut packet = SendablePacket::new();
+        let mut packet = SendablePacket::default();
         packet.write_uint8(0x00);
         packet.write_bytes(
-            encrypt_credentials(&self.username, &self.password, &session.modulus)?
-                .try_into()
-                .unwrap(),
+            encrypt_credentials(&self.username, &self.password, &session.modulus)?.into(),
         );
         packet.write_int32(self.session_id);
         packet.write_bytes(vec![

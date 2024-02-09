@@ -35,7 +35,7 @@ async fn handle_connection(
 ) {
     let gameserver_id = match validate_connection(&mut client, &gameservers).await {
         Ok(id) => {
-            let packet = ConnectOkPacket::new();
+            let packet = ConnectOkPacket::default();
             client.send_packet(Box::new(packet)).await.unwrap();
             id
         }
@@ -90,7 +90,7 @@ async fn validate_connection(
         ));
     }
 
-    let id = packet.id.clone();
+    let id = packet.id;
     {
         let mut lock = gameservers.lock().await;
         match lock.get(&id) {

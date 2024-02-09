@@ -76,7 +76,7 @@ async fn it_fails_to_connect_when_gameserver_id_registered() {
 }
 
 async fn start_handler() -> (ChannelConnector, AbortHandle) {
-    let mut listener = ChannelListener::new();
+    let mut listener = ChannelListener::default();
     let connector = listener.get_connector();
     let gameservers: ConnectedGameServers = Arc::new(Mutex::new(HashMap::new()));
 

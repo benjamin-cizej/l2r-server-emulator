@@ -1,8 +1,8 @@
 use shared::tokio::io;
 use std::io::ErrorKind::InvalidData;
 
-pub fn xor_encypher_packet(bytes: &mut Vec<u8>, key: i32) -> io::Result<()> {
-    let mut ecx = key.clone();
+pub fn xor_encypher_packet(bytes: &mut [u8], key: i32) -> io::Result<()> {
+    let mut ecx = key;
     let mut edx: i32;
     let mut pos = 4;
     while pos < bytes.len() - 8 {
@@ -24,7 +24,7 @@ pub fn xor_encypher_packet(bytes: &mut Vec<u8>, key: i32) -> io::Result<()> {
     Ok(())
 }
 
-pub fn xor_decypher_packet(bytes: &mut Vec<u8>) -> io::Result<()> {
+pub fn xor_decypher_packet(bytes: &mut [u8]) -> io::Result<()> {
     let size = bytes.len();
 
     let mut pos = match size.checked_sub(12) {
@@ -37,7 +37,7 @@ pub fn xor_decypher_packet(bytes: &mut Vec<u8>) -> io::Result<()> {
         None => return Err(std::io::Error::from(InvalidData)),
     };
 
-    let mut ecx = key.clone();
+    let mut ecx = key;
     let stop = 4;
     while stop <= pos {
         let internal_bytes = match bytes.get(pos..pos + 4) {

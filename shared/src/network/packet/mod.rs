@@ -10,7 +10,7 @@ pub fn swap32(block: &[u8]) -> [u8; 8] {
         let mut counter = iteration * 4;
 
         for j in i {
-            output[counter - 1] = j.clone();
+            output[counter - 1] = *j;
             counter -= 1;
         }
 

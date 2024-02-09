@@ -28,11 +28,11 @@ impl InitPacket {
     }
 
     pub fn get_session_id(&self) -> i32 {
-        self.session_id.clone()
+        self.session_id
     }
 
     pub fn get_protocol(&self) -> i32 {
-        self.protocol.clone()
+        self.protocol
     }
 
     pub fn get_modulus(&self) -> &RsaKeyModulus {
@@ -40,7 +40,7 @@ impl InitPacket {
     }
 
     pub fn get_blowfish_key(&self) -> [u8; 16] {
-        self.blowfish_key.clone()
+        self.blowfish_key
     }
 
     pub fn to_client_session(self, addr: SocketAddr) -> ClientSession {
@@ -55,7 +55,7 @@ impl InitPacket {
 
 impl ServerPacketBytes for InitPacket {
     fn to_bytes(&self, _: Option<&ServerSession>) -> io::Result<Vec<u8>> {
-        let mut packet = SendablePacket::new();
+        let mut packet = SendablePacket::default();
         packet.write_uint8(0x00);
         packet.write_int32(self.session_id);
         packet.write_int32(self.protocol);

@@ -4,6 +4,7 @@ use shared::structs::server::Server;
 use shared::structs::session::ServerSession;
 use shared::tokio::io;
 
+#[derive(Default)]
 pub struct ServerListPacket {
     pub list: Vec<Server>,
 }
@@ -16,10 +17,10 @@ impl ServerListPacket {
 
 impl ServerPacketBytes for ServerListPacket {
     fn to_bytes(&self, _: Option<&ServerSession>) -> io::Result<Vec<u8>> {
-        let mut packet = SendablePacket::new();
+        let mut packet = SendablePacket::default();
         packet.write_uint8(0x04);
         packet.write_uint8(self.list.len() as u8);
-        match self.list.get(0) {
+        match self.list.first() {
             Some(server) => {
                 packet.write_uint8(server.id);
             }

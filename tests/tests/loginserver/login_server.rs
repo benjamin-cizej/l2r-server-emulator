@@ -21,7 +21,7 @@ async fn it_connects_with_tcp() {
     // Start server via TcpListener.
     let client_listener = TcpListener::bind("127.0.0.1:2106").await.unwrap();
     let gameserver_listener = TcpListener::bind("127.0.0.1:6001").await.unwrap();
-    let storage = InMemoryAccountRepository::new();
+    let storage = InMemoryAccountRepository::default();
     let handle = tokio::spawn(async move {
         login_server::start_server(client_listener, gameserver_listener, storage)
             .await
@@ -123,11 +123,11 @@ async fn it_disconnects_both_clients_with_same_account() {
 }
 
 async fn start_channel_server() -> (ChannelConnector, ChannelConnector, AbortHandle) {
-    let client_listener = ChannelListener::new();
-    let gameserver_listener = ChannelListener::new();
+    let client_listener = ChannelListener::default();
+    let gameserver_listener = ChannelListener::default();
     let client_connector = client_listener.get_connector();
     let gameserver_connector = gameserver_listener.get_connector();
-    let storage = InMemoryAccountRepository::new();
+    let storage = InMemoryAccountRepository::default();
     let handle = tokio::spawn(async move {
         login_server::start_server(client_listener, gameserver_listener, storage)
             .await

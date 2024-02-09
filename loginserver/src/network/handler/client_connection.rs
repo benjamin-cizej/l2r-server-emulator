@@ -95,7 +95,7 @@ async fn handle_connection(
                 if let Err(e) = &result {
                     match e.kind() {
                         ErrorKind::Unsupported => {
-                            println!("Unknown packet received: {}", e.to_string());
+                            println!("Unknown packet received: {}", e);
                             continue;
                         }
                         ErrorKind::ConnectionAborted => {

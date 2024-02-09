@@ -33,7 +33,7 @@ pub async fn handle_packet(client: &mut ConnectedClient<impl Streamable>) -> io:
         None => {
             return Err(Error::new(
                 Unsupported,
-                format!("0x{:02X}", packet.get(0).unwrap()),
+                format!("0x{:02X}", packet.first().unwrap()),
             ));
         }
         Some(packet_type) => packet_type,

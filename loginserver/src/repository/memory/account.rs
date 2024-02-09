@@ -2,20 +2,13 @@ use crate::repository::account::AccountRepository;
 use crate::structs::account::Account;
 use std::collections::HashMap;
 
+#[derive(Default)]
 pub struct InMemoryAccountRepository {
     accounts: HashMap<String, Account>,
 }
 
-impl InMemoryAccountRepository {
-    pub fn new() -> Self {
-        InMemoryAccountRepository {
-            accounts: HashMap::new(),
-        }
-    }
-}
-
 impl AccountRepository for InMemoryAccountRepository {
-    fn get(&self, username: &String) -> std::io::Result<Option<&Account>> {
+    fn get(&self, username: &str) -> std::io::Result<Option<&Account>> {
         Ok(self.accounts.get(username))
     }
 

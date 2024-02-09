@@ -17,7 +17,7 @@ impl GGAuthPacket {
 
 impl ServerPacketBytes for GGAuthPacket {
     fn to_bytes(&self, _: Option<&ServerSession>) -> io::Result<Vec<u8>> {
-        let mut packet = SendablePacket::new();
+        let mut packet = SendablePacket::default();
         packet.write_uint8(0x0b);
         packet.write_int32(self.session_id);
         packet.write_int32(0);

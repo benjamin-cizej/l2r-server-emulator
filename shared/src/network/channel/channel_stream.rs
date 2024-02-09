@@ -51,7 +51,7 @@ impl Streamable for ChannelStream {
         mut buf: &'a mut [u8],
     ) -> Pin<Box<dyn Future<Output = io::Result<usize>> + Send + 'a>> {
         Box::pin(async move {
-            if self.buffer.len() == 0 {
+            if self.buffer.is_empty() {
                 self.buffer = match self.rx.recv().await {
                     Some(buffer) => buffer,
                     None => return Ok(0),

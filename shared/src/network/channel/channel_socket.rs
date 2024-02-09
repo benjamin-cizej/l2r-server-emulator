@@ -22,6 +22,6 @@ impl<'a> Socket for ChannelSocket<'a> {
         &'b mut self,
         _addr: SocketAddr,
     ) -> Pin<Box<dyn Future<Output = std::io::Result<Self::Output>> + Send + 'b>> {
-        Box::pin(async move { connect(&mut self.connector).await })
+        Box::pin(async move { connect(self.connector).await })
     }
 }

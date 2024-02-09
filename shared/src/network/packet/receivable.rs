@@ -24,10 +24,10 @@ impl ReceivablePacket {
     fn read_bytes(&mut self, size: usize) -> Result<Vec<u8>> {
         let mut bytes = vec![0u8; size];
 
-        return match self.reader.read(&mut bytes) {
+        match self.reader.read(&mut bytes) {
             Ok(_) => Ok(bytes),
-            Err(e) => Err(Error::from(e)),
-        };
+            Err(e) => Err(e),
+        }
     }
 
     pub fn read_uint8(&mut self) -> Result<u8> {

@@ -90,7 +90,7 @@ async fn handle_client_connections(listener: &mut impl Acceptable) {
 }
 
 async fn handle_game_stream(stream: &mut impl Streamable) {
-    let mut xor = Xor::new();
+    let mut xor = Xor::default();
     loop {
         let mut len = [0u8; 2];
         while let Ok(n) = stream.receive_bytes(&mut len).await {
@@ -106,7 +106,7 @@ async fn handle_game_stream(stream: &mut impl Streamable) {
             println!("Packet received 0x{:02X?}", data[0]);
             match data[0] {
                 0x00 => {
-                    let mut packet = SendablePacket::new();
+                    let mut packet = SendablePacket::default();
                     packet.write_uint8(0x84);
                     packet.pad_bits();
                     packet.add_checksum();
@@ -115,7 +115,7 @@ async fn handle_game_stream(stream: &mut impl Streamable) {
                     stream.send_bytes(packet.to_vec().as_slice()).await.unwrap();
                 }
                 0x0e => {
-                    let mut packet = SendablePacket::new();
+                    let mut packet = SendablePacket::default();
                     packet.write_uint8(0x2e);
                     packet.write_uint8(1);
                     packet.write_bytes(vec![0u8; 8]);
@@ -130,7 +130,7 @@ async fn handle_game_stream(stream: &mut impl Streamable) {
                     stream.send_bytes(packet.to_vec().as_slice()).await.unwrap();
                 }
                 0x2b => {
-                    let mut packet = SendablePacket::new();
+                    let mut packet = SendablePacket::default();
                     packet.write_uint8(0x09);
                     packet.write_int32(1);
                     packet.write_int32(7);
@@ -196,7 +196,7 @@ async fn handle_game_stream(stream: &mut impl Streamable) {
                     stream.send_bytes(packet.to_vec().as_slice()).await.unwrap();
                 }
                 0x12 => {
-                    let mut packet = SendablePacket::new();
+                    let mut packet = SendablePacket::default();
 
                     packet.write_uint8(0x0b);
                     packet.write_text("yolo");
@@ -243,7 +243,7 @@ async fn handle_game_stream(stream: &mut impl Streamable) {
 
                     stream.send_bytes(packet.to_vec().as_slice()).await.unwrap();
 
-                    let mut packet = SendablePacket::new();
+                    let mut packet = SendablePacket::default();
                     packet.write_uint8(0x73);
                     packet.write_uint16(256);
 
@@ -254,7 +254,7 @@ async fn handle_game_stream(stream: &mut impl Streamable) {
                     stream.send_bytes(packet.to_vec().as_slice()).await.unwrap();
                 }
                 0x11 => {
-                    let mut packet = SendablePacket::new();
+                    let mut packet = SendablePacket::default();
                     packet.write_uint8(0x32);
                     packet.write_int32(45478);
                     packet.write_int32(48916);
@@ -388,13 +388,13 @@ async fn handle_game_stream(stream: &mut impl Streamable) {
 
                     stream.send_bytes(packet.to_vec().as_slice()).await.unwrap();
 
-                    let mut packet = SendablePacket::new();
+                    let mut packet = SendablePacket::default();
                     packet.write_uint8(0xFE);
                     packet.write_uint16(0x5F);
 
                     let mut list: Vec<i32> = vec![0; 75 + 100 + 17];
-                    for i in 0..=74 {
-                        list[i] = i.to_i32().unwrap();
+                    for (i, val) in list.iter_mut().enumerate().take(75) {
+                        *val = i as i32;
                     }
 
                     for i in 0..=99 {
@@ -420,7 +420,7 @@ async fn handle_game_stream(stream: &mut impl Streamable) {
                 }
                 0xd0 => match data[1] {
                     0x2a => {
-                        let mut packet = SendablePacket::new();
+                        let mut packet = SendablePacket::default();
                         packet.write_uint8(0xFE);
                         packet.write_uint16(0x46);
                         packet.write_int32(2);
@@ -435,7 +435,7 @@ async fn handle_game_stream(stream: &mut impl Streamable) {
                         stream.send_bytes(packet.to_vec().as_slice()).await.unwrap();
                     }
                     0x58 => {
-                        let mut packet = SendablePacket::new();
+                        let mut packet = SendablePacket::default();
                         packet.write_uint8(0xFE);
                         packet.write_uint16(0x93);
                         packet.write_int32(0);
@@ -452,7 +452,7 @@ async fn handle_game_stream(stream: &mut impl Streamable) {
                     }
                 },
                 0x1f => {
-                    let mut packet = SendablePacket::new();
+                    let mut packet = SendablePacket::default();
                     packet.write_uint8(0xB9);
                     packet.write_int32(1);
                     packet.write_uint16(0);
@@ -466,7 +466,7 @@ async fn handle_game_stream(stream: &mut impl Streamable) {
                     stream.send_bytes(packet.to_vec().as_slice()).await.unwrap();
                 }
                 0x0f => {
-                    let mut packet = SendablePacket::new();
+                    let mut packet = SendablePacket::default();
                     let to_x = i32::from_le_bytes(data.get(1..5).unwrap().try_into().unwrap());
                     let to_y = i32::from_le_bytes(data.get(5..9).unwrap().try_into().unwrap());
                     let to_z = i32::from_le_bytes(data.get(9..13).unwrap().try_into().unwrap());
@@ -493,7 +493,7 @@ async fn handle_game_stream(stream: &mut impl Streamable) {
                     stream.send_bytes(packet.to_vec().as_slice()).await.unwrap();
                 }
                 0x57 => {
-                    let mut packet = SendablePacket::new();
+                    let mut packet = SendablePacket::default();
                     packet.write_uint8(0x71);
                     packet.write_int32(1);
 
@@ -504,7 +504,7 @@ async fn handle_game_stream(stream: &mut impl Streamable) {
 
                     stream.send_bytes(packet.to_vec().as_slice()).await.unwrap();
 
-                    let mut packet = SendablePacket::new();
+                    let mut packet = SendablePacket::default();
                     packet.write_uint8(0x09);
                     packet.write_int32(1);
                     packet.write_int32(7);
@@ -570,7 +570,7 @@ async fn handle_game_stream(stream: &mut impl Streamable) {
                     stream.send_bytes(packet.to_vec().as_slice()).await.unwrap();
                 }
                 0x48 => {
-                    let mut packet = SendablePacket::new();
+                    let mut packet = SendablePacket::default();
                     packet.write_uint8(0x24);
                     packet.write_int32(1);
                     packet.write_int32(0);
@@ -586,7 +586,7 @@ async fn handle_game_stream(stream: &mut impl Streamable) {
                     stream.send_bytes(packet.to_vec().as_slice()).await.unwrap();
                 }
                 0x6c => {
-                    let mut packet = SendablePacket::new();
+                    let mut packet = SendablePacket::default();
                     packet.write_uint8(0xa3);
                     packet.write_int32(1665);
                     packet.write_uint8(0);

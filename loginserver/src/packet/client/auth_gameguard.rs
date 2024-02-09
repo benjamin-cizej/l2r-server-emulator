@@ -34,7 +34,7 @@ impl FromDecryptedPacket for AuthGameGuardPacket {
 
 impl ClientPacketBytes for AuthGameGuardPacket {
     fn to_bytes(&self, _: Option<&ClientSession>) -> Result<Vec<u8>> {
-        let mut packet = SendablePacket::new();
+        let mut packet = SendablePacket::default();
         packet.write_uint8(0x07);
         packet.write_int32(self.session_id);
         packet.write_int32(0);

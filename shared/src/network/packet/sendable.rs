@@ -2,15 +2,12 @@ use crate::crypto::xor::Xor;
 use bytes::Buf;
 use num::ToPrimitive;
 
+#[derive(Default)]
 pub struct SendablePacket {
     buffer: Vec<u8>,
 }
 
 impl SendablePacket {
-    pub fn new() -> SendablePacket {
-        SendablePacket { buffer: vec![] }
-    }
-
     pub fn write_uint8(&mut self, number: u8) {
         self.buffer.append(&mut Vec::from(number.to_le_bytes()));
     }

@@ -7,20 +7,6 @@ pub struct Xor {
 }
 
 impl Xor {
-    pub fn new() -> Xor {
-        Xor {
-            enabled: false,
-            secret1: [
-                0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xc8, 0x27, 0x93, 0x01, 0xa1, 0x6c,
-                0x31, 0x97,
-            ],
-            secret2: [
-                0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xc8, 0x27, 0x93, 0x01, 0xa1, 0x6c,
-                0x31, 0x97,
-            ],
-        }
-    }
-
     pub fn decrypt(&mut self, data: Vec<u8>) -> Vec<u8> {
         if !self.enabled {
             return data;
@@ -28,18 +14,15 @@ impl Xor {
 
         let mut ecx = 0;
         let mut decrypted = data.clone();
-        for i in 0..data.len() {
-            let edx = decrypted[i];
+        for (i, edx) in data.iter().enumerate() {
             decrypted[i] = edx ^ self.secret1[i & 0xf] ^ ecx;
-            ecx = edx;
+            ecx = *edx;
         }
 
         let mut secret = i32::from_le_bytes(self.secret1[8..12].try_into().unwrap());
         secret += decrypted.len().to_i32().unwrap();
         let secret = secret.to_le_bytes();
-        for i in 8..12 {
-            self.secret1[i] = secret[i - 8];
-        }
+        self.secret1[8..12].copy_from_slice(&secret);
 
         decrypted
     }
@@ -52,8 +35,7 @@ impl Xor {
 
         let mut ecx = 0;
         let mut encrypted = data.clone();
-        for i in 0..data.len() {
-            let edx = encrypted[i];
+        for (i, edx) in data.iter().enumerate() {
             ecx ^= edx ^ self.secret2[i & 0xf];
             encrypted[i] = ecx;
         }
@@ -61,10 +43,24 @@ impl Xor {
         let mut secret = i32::from_le_bytes(self.secret2[8..12].try_into().unwrap());
         secret += encrypted.len().to_i32().unwrap();
         let secret = secret.to_le_bytes();
-        for i in 8..12 {
-            self.secret2[i] = secret[i - 8];
-        }
+        self.secret2[8..12].copy_from_slice(&secret);
 
         encrypted
+    }
+}
+
+impl Default for Xor {
+    fn default() -> Self {
+        Xor {
+            enabled: false,
+            secret1: [
+                0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xc8, 0x27, 0x93, 0x01, 0xa1, 0x6c,
+                0x31, 0x97,
+            ],
+            secret2: [
+                0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xc8, 0x27, 0x93, 0x01, 0xa1, 0x6c,
+                0x31, 0x97,
+            ],
+        }
     }
 }

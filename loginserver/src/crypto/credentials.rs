@@ -5,11 +5,7 @@ use shared::rsa::{BigUint, RsaPrivateKey};
 use std::io::ErrorKind::{InvalidData, InvalidInput, Other};
 use std::io::{Error, Result};
 
-pub fn encrypt_credentials(
-    username: &String,
-    password: &String,
-    modulus: &BigUint,
-) -> Result<[u8; 128]> {
+pub fn encrypt_credentials(username: &str, password: &str, modulus: &BigUint) -> Result<[u8; 128]> {
     if username.len() > 14 {
         return Err(Error::new(
             InvalidInput,
@@ -49,7 +45,7 @@ pub fn decrypt_credentials(
     private_key: &RsaPrivateKey,
 ) -> Result<(String, String)> {
     let credentials = BigUint::from_bytes_be(bytes);
-    return match internals::decrypt(Some(&mut thread_rng()), &private_key, &credentials) {
+    match internals::decrypt(Some(&mut thread_rng()), private_key, &credentials) {
         Ok(result) => {
             let mut replacement = vec![0u8; 91];
             replacement.append(&mut result.to_bytes_be());
@@ -61,7 +57,7 @@ pub fn decrypt_credentials(
         }
         Err(e) => Err(Error::new(
             InvalidData,
-            format!("Error decryptyng credentials: {}", e.to_string()),
+            format!("Error decryptyng credentials: {}", e),
         )),
-    };
+    }
 }

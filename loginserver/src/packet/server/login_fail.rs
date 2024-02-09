@@ -52,7 +52,7 @@ impl LoginFailPacket {
 
 impl ServerPacketBytes for LoginFailPacket {
     fn to_bytes(&self, _: Option<&ServerSession>) -> io::Result<Vec<u8>> {
-        let mut packet = SendablePacket::new();
+        let mut packet = SendablePacket::default();
         packet.write_uint8(0x01);
         packet.write_uint8(self.reason.get_opcode());
         packet.write_bytes(vec![0u8; 6]);

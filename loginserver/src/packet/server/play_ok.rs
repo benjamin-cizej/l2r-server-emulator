@@ -16,7 +16,7 @@ impl PlayOkPacket {
 
 impl ServerPacketBytes for PlayOkPacket {
     fn to_bytes(&self, _: Option<&ServerSession>) -> io::Result<Vec<u8>> {
-        let mut packet = SendablePacket::new();
+        let mut packet = SendablePacket::default();
         packet.write_uint8(0x07);
         packet.write_int32(self.play_ok1);
         packet.write_int32(self.play_ok2);

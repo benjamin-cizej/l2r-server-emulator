@@ -30,10 +30,10 @@ impl FromDecryptedPacket for InitPacket {
 
 impl ServerPacketBytes for InitPacket {
     fn to_bytes(&self) -> Result<Vec<u8>> {
-        let mut packet = SendablePacket::new();
+        let mut packet = SendablePacket::default();
         packet.write_uint8(0x00);
         packet.write_text(&self.auth_key);
-        packet.write_uint8(self.id.clone());
+        packet.write_uint8(self.id);
         packet.write_text(&self.name);
 
         Ok(packet.to_vec())

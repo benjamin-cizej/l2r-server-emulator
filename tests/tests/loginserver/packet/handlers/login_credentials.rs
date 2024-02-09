@@ -32,7 +32,7 @@ async fn it_returns_error_on_closed_connection() {
 
     let accounts: ConnectedAccounts =
         Arc::new(Mutex::new(HashMap::<String, Sender<MessageAction>>::new()));
-    let storage = Arc::new(Mutex::new(InMemoryAccountRepository::new()));
+    let storage = Arc::new(Mutex::new(InMemoryAccountRepository::default()));
     let error = handle_login_credentials(&mut connected_client, &accounts, &storage)
         .await
         .unwrap_err();
@@ -51,7 +51,7 @@ async fn it_returns_error_on_invalid_packet_received() {
 
     let clients: ConnectedAccounts =
         Arc::new(Mutex::new(HashMap::<String, Sender<MessageAction>>::new()));
-    let storage = Arc::new(Mutex::new(InMemoryAccountRepository::new()));
+    let storage = Arc::new(Mutex::new(InMemoryAccountRepository::default()));
 
     let error = handle_login_credentials(&mut client, &clients, &storage)
         .await
@@ -67,7 +67,7 @@ async fn it_returns_error_on_invalid_packet_received() {
 async fn it_returns_error_on_session_id_mismatch() {
     let clients: ConnectedAccounts =
         Arc::new(Mutex::new(HashMap::<String, Sender<MessageAction>>::new()));
-    let storage = Arc::new(Mutex::new(InMemoryAccountRepository::new()));
+    let storage = Arc::new(Mutex::new(InMemoryAccountRepository::default()));
 
     let (server_stream, client_stream) = ChannelStream::new_connected_pair();
     let mut connected_client =
@@ -98,7 +98,7 @@ async fn it_returns_error_on_session_id_mismatch() {
 async fn it_disconnects_on_invalid_credentials() {
     let clients: ConnectedAccounts =
         Arc::new(Mutex::new(HashMap::<String, Sender<MessageAction>>::new()));
-    let storage = Arc::new(Mutex::new(InMemoryAccountRepository::new()));
+    let storage = Arc::new(Mutex::new(InMemoryAccountRepository::default()));
     {
         storage
             .lock()
@@ -140,7 +140,7 @@ async fn it_disconnects_on_invalid_credentials() {
 async fn it_creates_new_account_if_it_does_not_exist() {
     let clients: ConnectedAccounts =
         Arc::new(Mutex::new(HashMap::<String, Sender<MessageAction>>::new()));
-    let storage = Arc::new(Mutex::new(InMemoryAccountRepository::new()));
+    let storage = Arc::new(Mutex::new(InMemoryAccountRepository::default()));
 
     let (server_stream, client_stream) = ChannelStream::new_connected_pair();
     let mut connected_client =
@@ -173,7 +173,7 @@ async fn it_creates_new_account_if_it_does_not_exist() {
 async fn it_logs_in_with_correct_credentials() {
     let clients: ConnectedAccounts =
         Arc::new(Mutex::new(HashMap::<String, Sender<MessageAction>>::new()));
-    let storage = Arc::new(Mutex::new(InMemoryAccountRepository::new()));
+    let storage = Arc::new(Mutex::new(InMemoryAccountRepository::default()));
     {
         storage
             .lock()

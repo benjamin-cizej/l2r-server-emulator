@@ -9,7 +9,7 @@ pub async fn connect(connector: &mut ChannelConnector) -> Result<ChannelStream> 
     let (byte_writer, byte_reader) = channel::<Vec<u8>>(10);
     let (sender, mut receiver) = channel::<Sender<Vec<u8>>>(10);
 
-    if let Err(_) = connector.send((byte_writer, sender)).await {
+    if connector.send((byte_writer, sender)).await.is_err() {
         return Err(Error::from(ConnectionRefused));
     }
 

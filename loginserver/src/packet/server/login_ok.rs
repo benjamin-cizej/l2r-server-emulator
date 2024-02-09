@@ -21,7 +21,7 @@ impl LoginOkPacket {
 
 impl ServerPacketBytes for LoginOkPacket {
     fn to_bytes(&self, _: Option<&ServerSession>) -> io::Result<Vec<u8>> {
-        let mut packet = SendablePacket::new();
+        let mut packet = SendablePacket::default();
         packet.write_uint8(0x03);
         packet.write_int32(self.login_ok1);
         packet.write_int32(self.login_ok2);

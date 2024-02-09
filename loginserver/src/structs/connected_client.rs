@@ -52,8 +52,7 @@ where
         Box::pin(async move {
             let mut bytes = packet.to_bytes(Some(&self.session))?;
             encrypt_packet(&mut bytes, &Blowfish::new(&self.session.blowfish_key));
-
-            return send_packet(&mut self.stream, bytes).await;
+            send_packet(&mut self.stream, bytes).await
         })
     }
 

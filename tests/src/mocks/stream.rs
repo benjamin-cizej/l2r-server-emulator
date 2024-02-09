@@ -29,7 +29,7 @@ impl Streamable for MockStream {
         mut buf: &'a mut [u8],
     ) -> Pin<Box<dyn Future<Output = std::io::Result<usize>> + Send + 'a>> {
         Box::pin(async move {
-            if self.buffer.len() == 0 {
+            if self.buffer.is_empty() {
                 return Ok(0);
             }
 

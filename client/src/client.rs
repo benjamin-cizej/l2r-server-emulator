@@ -67,7 +67,7 @@ where
         let packet = InitPacket::from_decrypted_packet(packet, None)?;
         self.session = Some(packet.to_client_session(addr));
 
-        Ok(InitPacket::from_decrypted_packet(self.bytes.clone(), None)?)
+        InitPacket::from_decrypted_packet(self.bytes.clone(), None)
     }
 
     pub async fn read_packet(&mut self) -> io::Result<Vec<u8>> {

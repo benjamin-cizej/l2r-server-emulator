@@ -24,8 +24,8 @@ impl PacketTypeEnum {
         }
     }
 
-    pub fn from_packet(packet: &Vec<u8>) -> Option<PacketTypeEnum> {
-        return match packet.get(0) {
+    pub fn from_packet(packet: &[u8]) -> Option<PacketTypeEnum> {
+        return match packet.first() {
             Some(opcode) => PacketTypeEnum::from(opcode),
             None => None,
         };
