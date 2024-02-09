@@ -62,7 +62,7 @@ async fn handle_login(stream: &mut impl Streamable) {
     decrypt_packet(&mut packet, &blowfish);
     if packet[0] == 0x01 {
         let packet = ConnectFailPacket::from_decrypted_packet(packet).unwrap();
-        println!("Rejected by login server: {:?}", packet.reason);
+        println!("Connection rejected by login server: {:?}", packet.reason);
         std::process::exit(1);
     }
 

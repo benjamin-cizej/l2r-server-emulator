@@ -8,6 +8,9 @@ edition = "2021"
 name = "gameserver"
 test = false
 doctest = false
+[lib]
+test = false
+doctest = false
 [dependencies]
 shared = { path = "../shared" }
 loginserver = { path = "../loginserver" }
