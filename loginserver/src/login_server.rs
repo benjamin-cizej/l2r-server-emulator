@@ -1,5 +1,8 @@
 use crate::packet::gameserver;
-use crate::packet::gameserver::FromDecryptedPacket;
+use crate::packet::gameserver::{
+    ConnectFailPacket, ConnectFailReason, ConnectOkPacket, FromDecryptedPacket,
+    ServerPacketBytes as GsPacketBytes,
+};
 use crate::packet::handlers::auth_gameguard::handle_gameguard_auth;
 use crate::packet::handlers::login_credentials::handle_login_credentials;
 use crate::packet::server::login_fail::{LoginFailPacket, LoginFailReason};
@@ -10,6 +13,7 @@ use crate::structs::connected_client::{ConnectedClient, LoginClientPackets};
 use shared::crypto::blowfish::{decrypt_packet, encrypt_packet, StaticL2Blowfish};
 use shared::extcrypto::blowfish::Blowfish;
 use shared::network::listener::Acceptable;
+use shared::network::packet::pad_bytes;
 use shared::network::stream::Streamable;
 use shared::network::{read_packet, send_packet};
 use shared::tokio;
@@ -65,13 +69,19 @@ async fn handle_gameserver_connections(
     let mut packet = read_packet(&mut stream).await.unwrap();
     decrypt_packet(&mut packet, &blowfish);
     let packet = gameserver::InitPacket::from_decrypted_packet(packet).unwrap();
-    if packet.auth_key != "test_auth_key".to_string() {
+    if packet.auth_key != "test_auth_key" {
         println!("Invalid auth key. Disconnecting...");
+        let mut packet = ConnectFailPacket::new(ConnectFailReason::InvalidKey)
+            .to_bytes()
+            .unwrap();
+        pad_bytes(&mut packet);
+        encrypt_packet(&mut packet, &blowfish);
+        send_packet(&mut stream, packet).await.unwrap();
         return;
     }
 
+    let id = packet.id.clone();
     {
-        let id = packet.id.clone();
         let mut lock = gameservers.lock().await;
         match lock.get(&id) {
             None => {
@@ -83,10 +93,35 @@ async fn handle_gameserver_connections(
                     "Gameserver with the id {} is already registered. Disconnecting...",
                     id
                 );
+                let mut packet = ConnectFailPacket::new(ConnectFailReason::AlreadyRegistered)
+                    .to_bytes()
+                    .unwrap();
+                pad_bytes(&mut packet);
+                encrypt_packet(&mut packet, &blowfish);
+                send_packet(&mut stream, packet).await.unwrap();
                 return;
             }
         };
     }
+
+    let mut packet = ConnectOkPacket::new().to_bytes().unwrap();
+    pad_bytes(&mut packet);
+    encrypt_packet(&mut packet, &blowfish);
+    send_packet(&mut stream, packet).await.unwrap();
+
+    let cloned = gameservers.clone();
+    tokio::spawn(async move {
+        loop {
+            match read_packet(&mut stream).await {
+                Ok(_) => {}
+                Err(e) => {
+                    println!("Connection with gameserver id {} closed: {}", id, e);
+                    cloned.lock().await.remove(&id);
+                    return;
+                }
+            }
+        }
+    });
 }
 
 async fn handle_client_connections(

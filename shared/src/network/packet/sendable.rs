@@ -36,9 +36,8 @@ impl SendablePacket {
     }
 
     pub fn write_text(&mut self, text: &str) {
-        let mut buffer = vec![0u16; text.len()];
-        let ucs2 = buffer.as_mut_slice();
-        ucs2::encode(text, ucs2).unwrap();
+        let mut ucs2 = vec![0u16; text.len()];
+        ucs2::encode(text, ucs2.as_mut_slice()).unwrap();
 
         let mut buffer = vec![0u8; ucs2.len() * 2];
         ucs2.iter()

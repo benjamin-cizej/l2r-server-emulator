@@ -55,8 +55,8 @@ pub fn decrypt_credentials(
             replacement.append(&mut result.to_bytes_be());
             let mut receivable = ReceivablePacket::new(replacement);
             receivable.read_raw(94).unwrap();
-            let username = receivable.read_text(14).unwrap();
-            let password = receivable.read_text(16).unwrap();
+            let username = receivable.read_text(Some(14)).unwrap();
+            let password = receivable.read_text(Some(16)).unwrap();
             Ok((username, password))
         }
         Err(e) => Err(Error::new(

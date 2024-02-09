@@ -1,5 +1,6 @@
 use bytes::buf::Reader;
 use bytes::{Buf, Bytes};
+use std::fmt::Write;
 use std::io::ErrorKind::InvalidData;
 use std::io::{Error, ErrorKind, Read, Result};
 
@@ -53,11 +54,26 @@ impl ReceivablePacket {
         self.read_bytes(size)
     }
 
-    pub fn read_text(&mut self, size: usize) -> Result<String> {
-        Ok(String::from_utf8_lossy(&self.read_bytes(size)?)
-            .trim_matches(char::from(0))
-            .trim()
-            .to_string())
+    pub fn read_text(&mut self, size: Option<usize>) -> Result<String> {
+        if let Some(size) = size {
+            return Ok(String::from_utf8_lossy(&self.read_bytes(size)?)
+                .trim_matches(char::from(0))
+                .trim()
+                .to_string());
+        }
+
+        let mut text = String::new();
+        loop {
+            let num = self.read_uint16()?;
+            if num == 0 {
+                break;
+            }
+
+            text.write_char(char::from_u32(num as u32).unwrap())
+                .unwrap();
+        }
+
+        Ok(text)
     }
 
     pub fn verify_checksum(&self) -> Result<()> {

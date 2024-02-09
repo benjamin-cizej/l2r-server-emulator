@@ -25,3 +25,9 @@ pub fn prepend_length(packet: &mut Vec<u8>) {
 
     packet.splice(0..0, length);
 }
+
+pub fn pad_bytes(packet: &mut Vec<u8>) {
+    let length = packet.len();
+    let pad = 8 - (length % 8);
+    packet.append(&mut vec![0u8; pad]);
+}
